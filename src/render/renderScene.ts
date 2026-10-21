@@ -1,3 +1,4 @@
+import { loadImage } from '../assets';
 import { resolveFrame, type ResolvedFrame } from '../model/defaults';
 import type { Layer, Project } from '../model/types';
 import { applyEasing } from './easing';
@@ -11,10 +12,7 @@ export async function loadAssets(project: Project): Promise<Assets> {
   const assets: Assets = new Map();
   const srcs = new Set(project.frames.flatMap((f) => f.layers.map((l) => l.src)));
   await Promise.all([...srcs].map(async (src) => {
-    const img = new Image();
-    img.src = src;
-    await img.decode();
-    assets.set(src, img);
+    assets.set(src, await loadImage(src));
   }));
   return assets;
 }

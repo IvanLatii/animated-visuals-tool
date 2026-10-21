@@ -7,9 +7,12 @@ export function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export async function loadImage(src: string): Promise<HTMLImageElement> {
-  const img = new Image();
-  img.src = src;
-  await img.decode();
-  return img;
+// onload замість img.decode(): decode() у вбудованому браузері інколи не завершувався, onload — завжди.
+export function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Не вдалося відкрити картинку'));
+    img.src = src;
+  });
 }
