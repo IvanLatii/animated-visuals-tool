@@ -7,15 +7,16 @@ import { DEFAULT_SETTINGS, settingsFromJob, toJob, type ExportSettings, type Qua
 import { exportSize, ExportAborted } from '../export/renderFrames';
 import type { ExportJob, Project } from '../model/types';
 import { projectDuration, type Assets } from '../render/renderScene';
+import { CheckRow, Hint, NumberField, Row, Section, Seg, SliderRow } from './ui';
 
 interface Props { project: Project; assets: Assets }
 interface Busy { text: string; progress: number | null }
 interface Result { url: string; name: string; bytes: number; format: 'gif' | 'mp4'; note?: string; warn?: boolean }
 
 const MODES: { id: QualityMode; label: string; hint: string }[] = [
-  { id: 'max', label: 'Макс. якість', hint: 'Найкраща картинка, файл більший' },
-  { id: 'balanced', label: 'Збалансовано', hint: 'Добра картинка й помірний розмір' },
-  { id: 'small', label: 'Мін. розмір', hint: 'Файл найменший, якість нижча' },
+  { id: 'max', label: 'Макс', hint: 'Максимальна якість: найкраща картинка, файл більший' },
+  { id: 'balanced', label: 'Баланс', hint: 'Збалансовано: добра картинка й помірний розмір' },
+  { id: 'small', label: 'Мін', hint: 'Мінімальний розмір: файл найменший, якість нижча' },
   { id: 'custom', label: 'Вручну', hint: 'Свої значення' },
 ];
 
@@ -90,76 +91,57 @@ export function ExportPanel({ project, assets }: Props) {
   const set = (patch: Partial<ExportSettings>) => setS((p) => ({ ...p, ...patch }));
 
   return (
-    <section className="panel export">
-      <h2>Експорт</h2>
-      <div className="seg-buttons" role="group" aria-label="Формат файлу">
-        <button className={s.format === 'mp4' ? 'on' : ''} onClick={() => set({ format: 'mp4' })}>MP4 (відео)</button>
-        <button className={s.format === 'gif' ? 'on' : ''} onClick={() => set({ format: 'gif' })}>GIF</button>
-      </div>
-      <div className="seg-buttons" role="group" aria-label="Кадрів за секунду">
-        {[24, 30, 60].map((f) => <button key={f} className={s.fps === f ? 'on' : ''} onClick={() => set({ fps: f })}>{f} к/с</button>)}
-      </div>
-      {s.format === 'gif' && <p className="hint">GIF зберігає час кадру в соті частки секунди, тож реальна частота трохи відрізняється (24 → ≈25, 30 → ≈33, 60 → ≈50 к/с).</p>}
+    <>
+      <Section id="exp-format" title="Формат файлу">
+        <Seg label="Формат файлу" value={s.format} onChange={(format) => set({ format })} options={[{ id: 'mp4', label: 'MP4 (відео)' }, { id: 'gif', label: 'GIF' }]} />
+        <Seg label="Кадрів за секунду" value={s.fps} onChange={(fps) => set({ fps })} options={[24, 30, 60].map((f) => ({ id: f, label: String(f) }))} />
+        {s.format === 'gif' && <Hint>GIF зберігає час кадру в сотих частках секунди, тож реальна частота трохи відрізняється (24 → ≈25, 30 → ≈33, 60 → ≈50 к/с).</Hint>}
+        <Seg label="Якість" value={s.mode} onChange={(mode) => set({ mode })} options={MODES.map((m) => ({ id: m.id, label: m.label, title: m.hint }))} />
+        {s.mode === 'custom' && (
+          <>
+            {s.format === 'gif'
+              ? <SliderRow label="Якість GIF" value={s.gifQuality} min={50} max={100} step={1} onChange={(gifQuality) => set({ gifQuality })} />
+              : <SliderRow label="Бітрейт, Мбіт/с" value={s.mp4Mbps} min={0.5} max={30} step={0.5} decimals={1} onChange={(mp4Mbps) => set({ mp4Mbps })} />}
+            <SliderRow label="Розмір, %" value={s.scale} min={0.3} max={1} step={0.05} scale={100} onChange={(scale) => set({ scale })} />
+          </>
+        )}
+      </Section>
 
-      <div className="seg-buttons" role="group" aria-label="Якість">
-        {MODES.map((m) => <button key={m.id} className={s.mode === m.id ? 'on' : ''} title={m.hint} onClick={() => set({ mode: m.id })}>{m.label}</button>)}
-      </div>
-      {s.mode === 'custom' && (
-        <>
-          {s.format === 'gif' ? (
-            <label className="field"><span>Якість GIF: {s.gifQuality}</span>
-              <input type="range" min={50} max={100} step={1} value={s.gifQuality} onChange={(e) => set({ gifQuality: Number(e.target.value) })} />
-            </label>
-          ) : (
-            <label className="field"><span>Бітрейт: {s.mp4Mbps.toFixed(1)} Мбіт/с</span>
-              <input type="range" min={0.5} max={30} step={0.5} value={s.mp4Mbps} onChange={(e) => set({ mp4Mbps: Number(e.target.value) })} />
-            </label>
-          )}
-          <label className="field"><span>Розмір картинки: {Math.round(s.scale * 100)}% ({size.w}×{size.h})</span>
-            <input type="range" min={0.3} max={1} step={0.05} value={s.scale} onChange={(e) => set({ scale: Number(e.target.value) })} />
-          </label>
-        </>
-      )}
-
-      <p className="row"><span>Файл</span><b>{size.w}×{size.h}, {s.fps} к/с</b></p>
-      <p className="row"><span>Орієнтовний розмір</span>
-        <b className={estimate.bytes !== null && estimate.bytes > targetMb * 1e6 ? 'over' : ''}>
-          {empty ? '—' : tooBig ? 'забагато кадрів' : estimate.loading ? 'рахую…' : `≈ ${mb(estimate.bytes!)}`}
-        </b>
-      </p>
-      {tooBig && <p className="hint warn">Для GIF забагато кадрів у такому розмірі. Зменш FPS, розмір або обери MP4.</p>}
-
-      <div className="fit-row">
-        <label className="field inline"><span>Вмістити в</span>
-          <input type="number" min={0.5} max={500} step={0.5} value={targetMb}
-            onChange={(e) => { const v = e.target.valueAsNumber; if (Number.isFinite(v) && v > 0) setTargetMb(v); }} />
-          <span>МБ</span>
-        </label>
-        <label className="field inline"><span>Можна зменшувати розмір картинки</span>
-          <input type="checkbox" checked={allowScale} onChange={(e) => setAllowScale(e.target.checked)} />
-        </label>
+      <Section id="exp-size" title="Розмір файлу">
+        <Row label="Файл"><b className="val">{size.w}×{size.h}, {s.fps} к/с</b></Row>
+        <Row label="Орієнтовно">
+          <b className={`val ${estimate.bytes !== null && estimate.bytes > targetMb * 1e6 ? 'over' : ''}`}>
+            {empty ? '—' : tooBig ? 'забагато кадрів' : estimate.loading ? 'рахую…' : `≈ ${mb(estimate.bytes!)}`}
+          </b>
+        </Row>
+        {tooBig && <Hint tone="warn">Для GIF забагато кадрів у такому розмірі. Зменш FPS, розмір або обери MP4.</Hint>}
+        <Row label="Вмістити в, МБ"><NumberField value={targetMb} min={0.5} max={500} step={0.5} decimals={1} width={56} onChange={setTargetMb} /></Row>
+        <CheckRow label="Можна зменшувати розмір" checked={allowScale} onChange={setAllowScale} />
         <button disabled={empty || busy !== null} onClick={doFit}>Вмістити в {targetMb} МБ і експортувати</button>
+      </Section>
+
+      <div className="pad">
+        <button className="primary" disabled={empty || busy !== null || tooBig} onClick={doExport}>Експортувати {s.format === 'mp4' ? 'MP4' : 'GIF'}</button>
       </div>
-      <button className="primary" disabled={empty || busy !== null || tooBig} onClick={doExport}>Експортувати</button>
 
       {busy && (
-        <div className="busy" role="status">
+        <div className="pad busy" role="status">
           <span>{busy.text}</span>
           <progress max={1} value={busy.progress ?? undefined} />
           <button onClick={() => abortRef.current?.abort()}>Скасувати</button>
         </div>
       )}
-      {error && <p className="hint warn" role="alert">{error}</p>}
+      {error && <div className="pad"><Hint tone="warn">{error}</Hint></div>}
       {result && (
-        <div className="result">
-          <p className="row"><span>{result.name}</span><b className={result.bytes > targetMb * 1e6 ? 'over' : ''}>{mb(result.bytes)}</b></p>
-          {result.note && <p className={`hint ${result.warn ? 'warn' : ''}`}>{result.note}</p>}
+        <div className="pad result">
+          <Row label={result.name}><b className={`val ${result.bytes > targetMb * 1e6 ? 'over' : ''}`}>{mb(result.bytes)}</b></Row>
+          {result.note && <Hint tone={result.warn ? 'warn' : undefined}>{result.note}</Hint>}
           <a className="download" href={result.url} download={result.name}>Скачати</a>
           {result.format === 'mp4'
             ? <video src={result.url} controls loop muted playsInline />
             : <img src={result.url} alt="Результат експорту" />}
         </div>
       )}
-    </section>
+    </>
   );
 }

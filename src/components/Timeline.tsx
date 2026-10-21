@@ -33,7 +33,7 @@ export function Timeline({ project, t, selectedId, onSeek, onSelect }: Props) {
           onPointerMove={(e) => { if (dragging.current) seekFromPointer(e.clientX); }}
           onPointerUp={() => { dragging.current = false; }}>
           {items.map((it) => (
-            <div key={it.rf.frame.id} className={`seg ${it.rf.frame.id === selectedId ? 'selected' : ''}`}
+            <div key={it.rf.frame.id} className={`seg-t ${it.rf.frame.id === selectedId ? 'selected' : ''}`}
               style={{ flexGrow: it.rf.duration, backgroundImage: `url(${it.rf.frame.layers[0].src})` }}>
               <span>{it.rf.duration.toFixed(1)} с</span>
             </div>

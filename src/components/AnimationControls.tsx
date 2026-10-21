@@ -1,15 +1,20 @@
 import type { Motion, MotionType, Transition, TransitionType } from '../model/types';
 import { EasingControls } from './EasingControls';
+import { Hint, SelectRow, SliderRow } from './ui';
 
-const MOTION_LABELS: Record<MotionType, string> = { none: 'Без руху', 'zoom-in': 'Зум in', 'zoom-out': 'Зум out' };
-const TRANSITION_LABELS: Record<TransitionType, string> = { cut: 'Різка зміна', crossfade: 'Crossfade', 'wipe-up': 'Маска знизу вгору' };
+const MOTIONS: { id: MotionType; label: string }[] = [
+  { id: 'none', label: 'Без руху' }, { id: 'zoom-in', label: 'Зум in' }, { id: 'zoom-out', label: 'Зум out' },
+];
+const TRANSITIONS: { id: TransitionType; label: string }[] = [
+  { id: 'cut', label: 'Різка зміна' }, { id: 'crossfade', label: 'Crossfade' }, { id: 'wipe-up', label: 'Маска знизу вгору' },
+];
 
 interface Common { overridden: boolean; onReset?: () => void }
 
-function Title({ text, overridden, onReset }: { text: string } & Common) {
+export function GroupTitle({ text, overridden, onReset }: { text: string } & Common) {
   return (
-    <div className="subhead">
-      <h3>{text}{overridden && <em> · змінено для кадру</em>}</h3>
+    <div className="grp">
+      <span>{text}{overridden && <em> · змінено для кадру</em>}</span>
       {overridden && onReset && <button className="link" onClick={onReset}>Скинути</button>}
     </div>
   );
@@ -18,18 +23,11 @@ function Title({ text, overridden, onReset }: { text: string } & Common) {
 export function MotionControls({ value, onChange, overridden, onReset }: { value: Motion; onChange: (p: Partial<Motion>) => void } & Common) {
   return (
     <div className="group">
-      <Title text="Рух у кадрі" overridden={overridden} onReset={onReset} />
-      <label className="field"><span>Тип</span>
-        <select value={value.type} onChange={(e) => onChange({ type: e.target.value as MotionType })}>
-          {(Object.keys(MOTION_LABELS) as MotionType[]).map((k) => <option key={k} value={k}>{MOTION_LABELS[k]}</option>)}
-        </select>
-      </label>
+      <GroupTitle text="Рух у кадрі" overridden={overridden} onReset={onReset} />
+      <SelectRow label="Тип" value={value.type} options={MOTIONS} onChange={(type) => onChange({ type })} />
       {value.type !== 'none' && (
         <>
-          <label className="field"><span>Сила: {Math.round(value.intensity * 100)}%</span>
-            <input type="range" min={0} max={0.6} step={0.01} value={value.intensity}
-              onChange={(e) => onChange({ intensity: Number(e.target.value) })} />
-          </label>
+          <SliderRow label="Сила" value={value.intensity} min={0} max={0.6} step={0.01} scale={100} onChange={(intensity) => onChange({ intensity })} />
           <EasingControls value={value.easing} onChange={(easing) => onChange({ easing })} />
         </>
       )}
@@ -41,19 +39,12 @@ export function TransitionControls({ value, onChange, overridden, onReset, isLas
   { value: Transition; onChange: (p: Partial<Transition>) => void; isLast?: boolean } & Common) {
   return (
     <div className="group">
-      <Title text="Перехід до наступного" overridden={overridden} onReset={onReset} />
-      {isLast && <p className="hint">Це останній кадр: переходу після нього немає.</p>}
-      <label className="field"><span>Тип</span>
-        <select value={value.type} onChange={(e) => onChange({ type: e.target.value as TransitionType })}>
-          {(Object.keys(TRANSITION_LABELS) as TransitionType[]).map((k) => <option key={k} value={k}>{TRANSITION_LABELS[k]}</option>)}
-        </select>
-      </label>
+      <GroupTitle text="Перехід до наступного" overridden={overridden} onReset={onReset} />
+      {isLast && <Hint>Це останній кадр: переходу після нього немає.</Hint>}
+      <SelectRow label="Тип" value={value.type} options={TRANSITIONS} onChange={(type) => onChange({ type })} />
       {value.type !== 'cut' && (
         <>
-          <label className="field"><span>Тривалість: {value.duration.toFixed(2)} с</span>
-            <input type="range" min={0.05} max={1.5} step={0.05} value={value.duration}
-              onChange={(e) => onChange({ duration: Number(e.target.value) })} />
-          </label>
+          <SliderRow label="Тривалість, с" value={value.duration} min={0.05} max={1.5} step={0.05} decimals={2} onChange={(duration) => onChange({ duration })} />
           <EasingControls value={value.easing} onChange={(easing) => onChange({ easing })} />
         </>
       )}

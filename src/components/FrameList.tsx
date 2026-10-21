@@ -20,7 +20,7 @@ export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onP
     <section className="panel frames">
       <header>
         <h2>Кадри</h2>
-        <button onClick={() => inputRef.current?.click()}>Додати картинки</button>
+        <button onClick={() => inputRef.current?.click()}>+ Додати</button>
         <input ref={inputRef} type="file" accept="image/*" multiple hidden
           onChange={(e) => { if (e.target.files) onPickFiles(e.target.files); e.target.value = ''; }} />
       </header>

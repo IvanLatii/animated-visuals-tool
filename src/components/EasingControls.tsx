@@ -1,12 +1,13 @@
 import type { Easing, EasingType } from '../model/types';
 import { applyEasing } from '../render/easing';
+import { SelectRow, SliderRow } from './ui';
 
-const LABELS: Record<EasingType, string> = {
-  linear: 'Лінійна',
-  'ease-in': 'Повільний старт',
-  'ease-out': 'Швидкий старт, повільний кінець',
-  'ease-in-out': 'Плавний старт і кінець',
-};
+const OPTIONS: { id: EasingType; label: string }[] = [
+  { id: 'linear', label: 'Лінійна' },
+  { id: 'ease-in', label: 'Повільний старт' },
+  { id: 'ease-out', label: 'Швидкий старт' },
+  { id: 'ease-in-out', label: 'Плавний старт/кінець' },
+];
 
 function Curve({ easing }: { easing: Easing }) {
   const pts = Array.from({ length: 41 }, (_, i) => {
@@ -15,8 +16,8 @@ function Curve({ easing }: { easing: Easing }) {
   });
   return (
     <svg className="curve" viewBox="-4 -4 108 108" aria-label="Графік швидкості">
-      <rect x="0" y="0" width="100" height="100" fill="none" stroke="currentColor" opacity=".2" />
-      <line x1="0" y1="100" x2="100" y2="0" stroke="currentColor" opacity=".2" strokeDasharray="3 3" />
+      <rect x="0" y="0" width="100" height="100" fill="none" stroke="var(--line-strong)" />
+      <line x1="0" y1="100" x2="100" y2="0" stroke="var(--line-strong)" strokeDasharray="3 3" />
       <polyline points={pts.join(' ')} fill="none" stroke="var(--accent)" strokeWidth="3" />
     </svg>
   );
@@ -26,15 +27,9 @@ export function EasingControls({ value, onChange }: { value: Easing; onChange: (
   return (
     <div className="easing">
       <div className="easing-fields">
-        <label className="field"><span>Крива</span>
-          <select value={value.type} onChange={(e) => onChange({ ...value, type: e.target.value as EasingType })}>
-            {(Object.keys(LABELS) as EasingType[]).map((k) => <option key={k} value={k}>{LABELS[k]}</option>)}
-          </select>
-        </label>
-        <label className="field"><span>Сила: {value.strength.toFixed(1)}</span>
-          <input type="range" min={1} max={6} step={0.5} value={value.strength} disabled={value.type === 'linear'}
-            onChange={(e) => onChange({ ...value, strength: Number(e.target.value) })} />
-        </label>
+        <SelectRow label="Крива" value={value.type} options={OPTIONS} onChange={(type) => onChange({ ...value, type })} />
+        <SliderRow label="Сила" value={value.strength} min={1} max={6} step={0.5} decimals={1} disabled={value.type === 'linear'}
+          onChange={(strength) => onChange({ ...value, strength })} />
       </div>
       <Curve easing={value} />
     </div>
