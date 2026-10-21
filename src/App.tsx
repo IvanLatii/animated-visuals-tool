@@ -11,7 +11,7 @@ import { applyTheme, loadTheme, type Theme } from './theme';
 import { newProject } from './model/defaults';
 import type { Project } from './model/types';
 import { projectDuration, type Assets } from './render/renderScene';
-import { addFrames, moveFrame, newFrame, removeFrame } from './state/projectActions';
+import { addFrames, moveFrame, newFrame, removeFrame, replaceFrameImage } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
 
@@ -35,7 +35,7 @@ export function App() {
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const images = [...files].filter((f) => f.type.startsWith('image/'));
-    if (images.length === 0) { setError('Це не картинки. Підходять PNG, JPG, WebP.'); return; }
+    if (images.length === 0) { setError('That is not an image. Use PNG, JPG or WebP.'); return; }
     setError(null);
     const loaded: { frame: ReturnType<typeof newFrame>; img: HTMLImageElement }[] = [];
     for (const file of images) {
@@ -43,7 +43,7 @@ export function App() {
         const src = await fileToDataUrl(file);
         loaded.push({ frame: newFrame(src), img: await loadImage(src) });
       } catch {
-        setError(`Не вдалося відкрити «${file.name}».`);
+        setError(`Could not open "${file.name}".`);
       }
     }
     if (loaded.length === 0) return;
@@ -54,6 +54,19 @@ export function App() {
     });
     setProject((p) => addFrames(p, loaded.map((l) => l.frame)));
     setSelectedId(loaded[loaded.length - 1].frame.id);
+  }, []);
+
+  const replaceFile = useCallback(async (id: string, file: File) => {
+    if (!file.type.startsWith('image/')) { setError('That is not an image. Use PNG, JPG or WebP.'); return; }
+    try {
+      const src = await fileToDataUrl(file);
+      const img = await loadImage(src);
+      setAssets((prev) => new Map(prev).set(src, img));
+      setProject((p) => replaceFrameImage(p, id, src));
+      setError(null);
+    } catch {
+      setError(`Could not open "${file.name}".`);
+    }
   }, []);
 
   // Програвання: рахуємо час від кадру до кадру. Позицію тримаємо в ref, щоб цикл не перестворювався щокадру.
@@ -102,29 +115,36 @@ export function App() {
       style={{ '--lw': `${layout.left}px`, '--rw': `${layout.right}px`, '--th': `${layout.timeline}px` } as CSSProperties}
       onDragOver={(e) => { if (hasFiles(e)) { e.preventDefault(); setDropping(true); } }}
       onDragLeave={(e) => { if (e.currentTarget === e.target) setDropping(false); }}
-      onDrop={(e) => { if (hasFiles(e)) { e.preventDefault(); setDropping(false); void addFiles(e.dataTransfer.files); } }}>
+      onDrop={(e) => {
+        if (!hasFiles(e)) return;
+        setDropping(false);
+        if (e.defaultPrevented) return; // файл кинули на конкретний кадр — його вже замінено
+        e.preventDefault();
+        void addFiles(e.dataTransfer.files);
+      }}>
       <header className="topbar">
         <b className="brand">Animated Visuals</b>
         <span className="spacer" />
-        <Seg label="Тема" value={theme} onChange={setTheme} options={[
-          { id: 'light', label: 'Світла' }, { id: 'dark', label: 'Темна' }, { id: 'system', label: 'Авто' },
+        <Seg label="Theme" value={theme} onChange={setTheme} options={[
+          { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'Auto' },
         ]} />
       </header>
       <FrameList project={project} selectedId={selectedId}
         onSelect={setSelectedId}
         onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelectedId((s) => (s === id ? null : s)); }}
         onMove={(from, to) => setProject((p) => moveFrame(p, from, to))}
-        onPickFiles={(files) => void addFiles(files)} />
-      <Resizer axis="x" label="Ширина лівої панелі" value={layout.left} min={LIMITS.left[0]} max={LIMITS.left[1]}
+        onPickFiles={(files) => void addFiles(files)}
+        onReplace={(id, file) => void replaceFile(id, file)} />
+      <Resizer axis="x" label="Left panel width" value={layout.left} min={LIMITS.left[0]} max={LIMITS.left[1]}
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">
         <Preview project={project} assets={assets} t={t} showSafe={showSafe} playing={playing} loop={loop} duration={duration}
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
-        <Resizer axis="y" invert label="Висота таймлайну" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
+        <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
         <Timeline project={project} t={t} selectedId={selectedId} onSeek={seek} onSelect={setSelectedId} />
       </div>
-      <Resizer axis="x" invert label="Ширина правої панелі" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
+      <Resizer axis="x" invert label="Right panel width" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
       <Sidebar project={project} assets={assets} selectedId={selectedId} duration={duration}
         showSafe={showSafe} onShowSafe={setShowSafe} onChange={(fn: (p: Project) => Project) => setProject(fn)} />

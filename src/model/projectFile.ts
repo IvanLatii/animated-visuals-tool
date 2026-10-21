@@ -6,7 +6,7 @@ export function serializeProject(project: Project): string {
 
 export function parseProject(json: string): Project {
   const data = JSON.parse(json);
-  if (data?.version !== 1) throw new Error(`Непідтримувана версія проєкту: ${data?.version}`);
-  if (!data.canvas || !Array.isArray(data.frames) || !data.defaults) throw new Error('Файл проєкту пошкоджений');
+  if (data?.version !== 1) throw new Error(`Unsupported project version: ${data?.version}`);
+  if (!data.canvas || !Array.isArray(data.frames) || !data.defaults) throw new Error('The project file is corrupted');
   return data as Project;
 }

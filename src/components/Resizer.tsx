@@ -17,7 +17,7 @@ export function Resizer({ axis, value, min, max, invert = false, onChange, onRes
   const start = useRef<{ pos: number; value: number } | null>(null);
   const pos = (e: React.PointerEvent) => (axis === 'x' ? e.clientX : e.clientY);
   return (
-    <div className={`resizer ${axis}`} role="separator" aria-orientation={axis === 'x' ? 'vertical' : 'horizontal'} aria-label={label} title="Потягни, щоб змінити розмір. Подвійний клік — скинути"
+    <div className={`resizer ${axis}`} role="separator" aria-orientation={axis === 'x' ? 'vertical' : 'horizontal'} aria-label={label}
       onPointerDown={(e) => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* штучна подія без реального вказівника */ } start.current = { pos: pos(e), value }; }}
       onPointerMove={(e) => {
         if (!start.current) return;

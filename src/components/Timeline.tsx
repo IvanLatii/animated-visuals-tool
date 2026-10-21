@@ -27,7 +27,7 @@ export function Timeline({ project, t, selectedId, onSeek, onSelect }: Props) {
 
   return (
     <section className="timeline">
-      {total === 0 ? <p className="hint">Таймлайн з'явиться, коли додаси кадри.</p> : (
+      {total === 0 ? <p className="hint">No frames yet</p> : (
         <div ref={barRef} className="bar"
           onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); seekFromPointer(e.clientX); }}
           onPointerMove={(e) => { if (dragging.current) seekFromPointer(e.clientX); }}
@@ -35,7 +35,7 @@ export function Timeline({ project, t, selectedId, onSeek, onSelect }: Props) {
           {items.map((it) => (
             <div key={it.rf.frame.id} className={`seg-t ${it.rf.frame.id === selectedId ? 'selected' : ''}`}
               style={{ flexGrow: it.rf.duration, backgroundImage: `url(${it.rf.frame.layers[0].src})` }}>
-              <span>{it.rf.duration.toFixed(1)} с</span>
+              <span>{it.rf.duration.toFixed(1)} s</span>
             </div>
           ))}
           <div className="playhead" style={{ left: `${(Math.min(t, total) / total) * 100}%` }} />

@@ -12,7 +12,7 @@ export function frameCount(project: Project, fps: number): number {
 }
 
 export class ExportAborted extends Error {
-  constructor() { super('Експорт скасовано'); this.name = 'ExportAborted'; }
+  constructor() { super('Export cancelled'); this.name = 'ExportAborted'; }
 }
 
 export function throwIfAborted(signal?: AbortSignal) {

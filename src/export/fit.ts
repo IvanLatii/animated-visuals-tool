@@ -60,7 +60,7 @@ export async function fitMp4(project: Project, base: ExportJob, targetBytes: num
   let blob: Blob = new Blob();
   for (let attempt = 0; attempt < 4; attempt++) {
     throwIfAborted(opts.signal);
-    blob = await exportMp4(project, job, assets, { ...opts, onStatus: (t, p) => opts.onStatus?.(`Спроба ${attempt + 1}: ${t}`, p) });
+    blob = await exportMp4(project, job, assets, { ...opts, onStatus: (t, p) => opts.onStatus?.(`Attempt ${attempt + 1}: ${t}`, p) });
     if (blob.size <= targetBytes) return { job, blob, fits: true };
     job = { ...job, mp4: { bitrate: job.mp4!.bitrate * Math.max(0.5, (targetBytes * SAFETY) / blob.size) } };
   }
@@ -69,14 +69,14 @@ export async function fitMp4(project: Project, base: ExportJob, targetBytes: num
 
 export async function fitGif(project: Project, base: ExportJob, targetBytes: number, assets: Assets, allowScale: boolean, opts: ExportOptions): Promise<FitResult> {
   const ladder = gifLadder(base, allowScale).filter((j) => gifMemoryBytes(project, j) <= 1.5e9);
-  if (ladder.length === 0) throw new Error('Для GIF забагато кадрів навіть при мінімальних налаштуваннях. Зроби анімацію коротшою або обери MP4.');
+  if (ladder.length === 0) throw new Error('Too many frames for GIF even at the lowest settings. Make the animation shorter or use MP4.');
 
   // Бінарний пошук першого кроку драбини, оцінений розмір якого вміщується (розмір падає вздовж драбини).
   let lo = 0, hi = ladder.length - 1, found = ladder.length - 1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     throwIfAborted(opts.signal);
-    opts.onStatus?.(`Підбираю налаштування (${ladder[mid].fps} к/с, ${Math.round(ladder[mid].scale * 100)}%, якість ${ladder[mid].gif?.quality})`, null);
+    opts.onStatus?.(`Trying ${ladder[mid].fps} fps, ${Math.round(ladder[mid].scale * 100)}%, quality ${ladder[mid].gif?.quality}`, null);
     const est = await estimateGif(project, ladder[mid], assets, opts.signal);
     if (est <= targetBytes * SAFETY) { found = mid; hi = mid - 1; } else lo = mid + 1;
   }
@@ -84,7 +84,7 @@ export async function fitGif(project: Project, base: ExportJob, targetBytes: num
   let blob: Blob = new Blob();
   for (let i = found; i < ladder.length && i < found + 4; i++) {
     throwIfAborted(opts.signal);
-    const label = `Експорт ${ladder[i].fps} к/с, ${Math.round(ladder[i].scale * 100)}%, якість ${ladder[i].gif?.quality}`;
+    const label = `Export ${ladder[i].fps} fps, ${Math.round(ladder[i].scale * 100)}%, quality ${ladder[i].gif?.quality}`;
     blob = await exportGif(project, ladder[i], assets, { ...opts, onStatus: (t, p) => opts.onStatus?.(`${label}: ${t}`, p) });
     if (blob.size <= targetBytes) return { job: ladder[i], blob, fits: true };
     if (i === found + 3 || i === ladder.length - 1) return { job: ladder[i], blob, fits: false };

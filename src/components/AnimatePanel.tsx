@@ -22,21 +22,21 @@ export function AnimatePanel({ project, selectedId, duration, onChange }: Props)
 
   return (
     <>
-      <Section id="scope" title="Область">
-        <Seg label="Для чого налаштування" value={editFrame ? 'frame' : 'project'} onChange={setScope} options={[
-          { id: 'project', label: 'Весь проєкт' },
-          { id: 'frame', label: frame ? `Кадр ${index + 1}` : 'Кадр', disabled: !frame, title: frame ? '' : 'Спершу вибери кадр' },
+      <Section id="scope" title="Apply to">
+        <Seg label="Apply to" value={editFrame ? 'frame' : 'project'} onChange={setScope} options={[
+          { id: 'project', label: 'Whole project' },
+          { id: 'frame', label: frame ? `Frame ${index + 1}` : 'Frame', disabled: !frame },
         ]} />
-        {!editFrame && <Row label="Загальна тривалість"><b className="val">{duration.toFixed(1)} с</b></Row>}
+        {!editFrame && <Row label="Total duration"><b className="val">{duration.toFixed(1)} s</b></Row>}
       </Section>
 
-      <Section id="anim" title="Анімація">
+      <Section id="anim" title="Animation">
         {editFrame ? (
           <>
-            <SliderRow label="Тривалість кадру, с" value={rf.duration} min={0.1} max={10} step={0.1} decimals={1}
+            <SliderRow label="Frame duration, s" value={rf.duration} min={0.1} max={10} step={0.1} decimals={1}
               onChange={(v) => onChange((pr) => A.setFrameDuration(pr, frame.id, v))} />
             {frame.duration !== undefined && (
-              <button className="link" onClick={() => onChange((pr) => A.setFrameDuration(pr, frame.id, undefined))}>Скинути тривалість</button>
+              <button className="link" onClick={() => onChange((pr) => A.setFrameDuration(pr, frame.id, undefined))}>Reset duration</button>
             )}
             <FitControls value={frame.layers[0]?.fit ?? project.defaults.layerFit} overridden={frame.layers.some((l) => l.fit !== undefined)}
               onChange={(v) => onChange((pr) => A.setFrameFit(pr, frame.id, v))}
@@ -45,13 +45,12 @@ export function AnimatePanel({ project, selectedId, duration, onChange }: Props)
               onChange={(patch) => onChange((pr) => A.setFrameMotion(pr, frame.id, patch))}
               onReset={() => onChange((pr) => A.setFrameMotion(pr, frame.id, undefined))} />
             <TransitionControls value={rf.transitionOut} overridden={frame.transitionOut !== undefined}
-              isLast={index === project.frames.length - 1}
               onChange={(patch) => onChange((pr) => A.setFrameTransition(pr, frame.id, patch))}
               onReset={() => onChange((pr) => A.setFrameTransition(pr, frame.id, undefined))} />
           </>
         ) : (
           <>
-            <SliderRow label="Тривалість кадру, с" value={project.defaults.frameDuration} min={0.1} max={10} step={0.1} decimals={1}
+            <SliderRow label="Frame duration, s" value={project.defaults.frameDuration} min={0.1} max={10} step={0.1} decimals={1}
               onChange={(v) => onChange((pr) => A.setDefaultFrameDuration(pr, v))} />
             <FitControls value={project.defaults.layerFit} overridden={false} onChange={(v) => onChange((pr) => A.setDefaultFit(pr, v))} />
             <MotionControls value={project.defaults.motion} overridden={false} onChange={(patch) => onChange((pr) => A.setDefaultMotion(pr, patch))} />

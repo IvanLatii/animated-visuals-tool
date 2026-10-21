@@ -7,7 +7,7 @@ import { ExportPanel } from './ExportPanel';
 
 type Tab = 'design' | 'animate' | 'export';
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'design', label: 'Вигляд' }, { id: 'animate', label: 'Анімація' }, { id: 'export', label: 'Експорт' },
+  { id: 'design', label: 'Design' }, { id: 'animate', label: 'Animation' }, { id: 'export', label: 'Export' },
 ];
 
 interface Props {

@@ -106,7 +106,7 @@ export function Preview({ project, assets, t, showSafe, playing, loop, duration,
   const endPan = () => { panRef.current = null; setPanning(false); };
 
   const empty = project.frames.length === 0;
-  const presetLabel = project.canvas.preset === 'custom' ? 'Свій' : project.canvas.preset;
+  const presetLabel = project.canvas.preset === 'custom' ? 'Custom' : project.canvas.preset;
   const pct = Math.round(scale * 100);
   return (
     <section className="preview">
@@ -115,7 +115,7 @@ export function Preview({ project, assets, t, showSafe, playing, loop, duration,
         onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }} onDoubleClick={fitView}>
         <div className="canvas-wrap" style={{ width: w * scale, height: h * scale, transform: `translate(${view.x}px, ${view.y}px)`, visibility: box.w ? 'visible' : 'hidden' } as CSSProperties}>
           <div className="marks" aria-hidden><i /><i /><i /><i /></div>
-          <span className="cap top">Сцена · {duration.toFixed(1)} с</span>
+          <span className="cap top">Scene · {duration.toFixed(1)} s</span>
           <canvas ref={canvasRef} width={w} height={h} />
           {showSafe && (
             <div className="safe-zone" style={{ inset: `${safe.top * 100}% ${safe.right * 100}% ${safe.bottom * 100}% ${safe.left * 100}%` }}>
@@ -124,19 +124,18 @@ export function Preview({ project, assets, t, showSafe, playing, loop, duration,
           )}
           <span className="cap bottom">{presetLabel} · {w}×{h} · {pct}%</span>
         </div>
-        {empty && <div className="empty">Додай картинки, щоб побачити прев'ю</div>}
+        {empty && <div className="empty">Add images to see the preview</div>}
         <div className="zoombar" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-          <button onClick={() => zoomBy(0.8)} aria-label="Зменшити" title="⌘ −">−</button>
-          <button className="pct" onClick={() => zoomTo(1 / fit)} title="100% (⌘ 1)">{pct}%</button>
-          <button onClick={() => zoomBy(1.25)} aria-label="Збільшити" title="⌘ +">+</button>
-          <button onClick={fitView} title="Вмістити (⌘ 0)">Вмістити</button>
+          <button onClick={() => zoomBy(0.8)} aria-label="Zoom out" title="Zoom out">−</button>
+          <button className="pct" onClick={() => zoomTo(1 / fit)}>{pct}%</button>
+          <button onClick={() => zoomBy(1.25)} aria-label="Zoom in" title="Zoom in">+</button>
+          <button onClick={fitView}>Fit</button>
         </div>
       </div>
       <div className="transport">
-        <button className="play" onClick={onTogglePlay} disabled={empty} title="Space">{playing ? '❚❚  Пауза' : '▶  Грати'}</button>
-        <label className="chk"><input type="checkbox" checked={loop} onChange={(e) => onToggleLoop(e.target.checked)} /> Повторювати</label>
-        <span className="hintkeys">Space · ⌘ колесо — масштаб · колесо натиснути — тягнути</span>
-        <span className="time">{Math.min(t, duration).toFixed(2)} / {duration.toFixed(2)} с</span>
+        <button className="primary play" onClick={onTogglePlay} disabled={empty}>{playing ? '❚❚  Pause' : '▶  Play'}</button>
+        <label className="chk"><input type="checkbox" checked={loop} onChange={(e) => onToggleLoop(e.target.checked)} /> Loop</label>
+        <span className="time">{Math.min(t, duration).toFixed(2)} / {duration.toFixed(2)} s</span>
       </div>
     </section>
   );

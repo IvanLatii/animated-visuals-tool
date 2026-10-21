@@ -21,7 +21,7 @@ export async function exportMp4(project: Project, job: ExportJob, assets: Assets
       throwIfAborted(signal);
       renderScene(project, f / job.fps, canvas, assets);
       await source.add(f / job.fps, 1 / job.fps);
-      onStatus?.('Кодую MP4', (f + 1) / n);
+      onStatus?.('Encoding MP4', (f + 1) / n);
     }
     source.close();
     await output.finalize();

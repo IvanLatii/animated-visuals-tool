@@ -19,14 +19,14 @@ export function gifMemoryBytes(project: Project, job: ExportJob): number {
 export async function exportGif(project: Project, job: ExportJob, assets: Assets, opts: ExportOptions = {}): Promise<Blob> {
   const { signal, onStatus } = opts;
   if (gifMemoryBytes(project, job) > MAX_FRAME_BYTES) {
-    throw new Error('Забагато кадрів для GIF у такому розмірі. Зменш FPS або розмір, або обери MP4.');
+    throw new Error('Too many frames for GIF at this size. Lower the FPS or size, or use MP4.');
   }
   const size = exportSize(project, job.scale);
   const n = frameCount(project, job.fps);
   const indices = Array.from({ length: n }, (_, i) => i);
-  onStatus?.('Малюю кадри', 0);
-  const frames = await renderFrames(project, assets, size, job.fps, indices, signal, (p) => onStatus?.('Малюю кадри', p));
+  onStatus?.('Rendering frames', 0);
+  const frames = await renderFrames(project, assets, size, job.fps, indices, signal, (p) => onStatus?.('Rendering frames', p));
   throwIfAborted(signal);
-  onStatus?.('Кодую GIF (це найдовший крок)', null);
+  onStatus?.('Encoding GIF (the slowest step)', null);
   return encodeGifski(frames, size.w, size.h, job.fps, job.gif?.quality ?? 90, signal);
 }

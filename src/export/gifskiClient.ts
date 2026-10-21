@@ -13,9 +13,9 @@ export function encodeGifski(
     worker.onmessage = (e: MessageEvent<{ ok: true; data: Uint8Array<ArrayBuffer> } | { ok: false; error: string }>) => {
       finish();
       if (e.data.ok) resolve(new Blob([e.data.data], { type: 'image/gif' }));
-      else reject(new Error(`Кодування GIF не вдалося: ${e.data.error}`));
+      else reject(new Error(`GIF encoding failed: ${e.data.error}`));
     };
-    worker.onerror = (e) => { finish(); reject(new Error(`Помилка воркера GIF: ${e.message}`)); };
+    worker.onerror = (e) => { finish(); reject(new Error(`GIF worker error: ${e.message}`)); };
 
     const buffers = frames.map((f) => new Uint8Array(f.data.buffer));
     worker.postMessage({ frames: buffers, width, height, fps, quality }, buffers.map((b) => b.buffer));

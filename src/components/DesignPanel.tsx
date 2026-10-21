@@ -12,7 +12,7 @@ interface Props {
 
 export function DesignPanel({ project, showSafe, onShowSafe, onChange }: Props) {
   return (
-    <Section id="format" title="Формат">
+    <Section id="format" title="Format">
       <CanvasControls project={project} showSafe={showSafe} onShowSafe={onShowSafe}
         onPreset={(p) => onChange((pr) => A.setCanvasPreset(pr, p))}
         onSize={(w, h) => onChange((pr) => A.setCanvasSize(pr, w, h))}

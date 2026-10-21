@@ -13,14 +13,11 @@ interface Props { project: Project; assets: Assets }
 interface Busy { text: string; progress: number | null }
 interface Result { url: string; name: string; bytes: number; format: 'gif' | 'mp4'; note?: string; warn?: boolean }
 
-const MODES: { id: QualityMode; label: string; hint: string }[] = [
-  { id: 'max', label: 'Макс', hint: 'Максимальна якість: найкраща картинка, файл більший' },
-  { id: 'balanced', label: 'Баланс', hint: 'Збалансовано: добра картинка й помірний розмір' },
-  { id: 'small', label: 'Мін', hint: 'Мінімальний розмір: файл найменший, якість нижча' },
-  { id: 'custom', label: 'Вручну', hint: 'Свої значення' },
+const MODES: { id: QualityMode; label: string }[] = [
+  { id: 'max', label: 'Max' }, { id: 'balanced', label: 'Balanced' }, { id: 'small', label: 'Small' }, { id: 'custom', label: 'Custom' },
 ];
 
-const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 2 : 1)} МБ`;
+const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 2 : 1)} MB`;
 
 export function ExportPanel({ project, assets }: Props) {
   const [s, setS] = useState<ExportSettings>(DEFAULT_SETTINGS);
@@ -61,7 +58,7 @@ export function ExportPanel({ project, assets }: Props) {
     if (result) URL.revokeObjectURL(result.url);
     setResult(null); setError(null);
     const ctl = new AbortController(); abortRef.current = ctl;
-    setBusy({ text: 'Починаю…', progress: 0 });
+    setBusy({ text: 'Starting…', progress: 0 });
     try {
       setResult(await work(ctl.signal, (text, progress) => setBusy({ text, progress })));
     } catch (e) {
@@ -82,9 +79,9 @@ export function ExportPanel({ project, assets }: Props) {
   const doFit = () => run(async (signal, onStatus) => {
     const fit = await fitToSize(project, job, targetMb * 1e6, assets, allowScale, { signal, onStatus });
     setS((prev) => settingsFromJob(fit.job, prev));
-    const note = `${fit.job.fps} к/с, ${exportSize(project, fit.job.scale).w}×${exportSize(project, fit.job.scale).h}${fit.job.gif ? `, якість ${fit.job.gif.quality}` : `, ${(fit.job.mp4!.bitrate / 1e6).toFixed(1)} Мбіт/с`}`;
+    const note = `${fit.job.fps} fps, ${exportSize(project, fit.job.scale).w}×${exportSize(project, fit.job.scale).h}${fit.job.gif ? `, quality ${fit.job.gif.quality}` : `, ${(fit.job.mp4!.bitrate / 1e6).toFixed(1)} Mbit/s`}`;
     return makeResult(fit.blob, fit.job,
-      fit.fits ? `Вмістилось. Налаштування: ${note}.` : `Не вдалося вмістити в ${targetMb} МБ. Найменше, що вийшло (${note}). Спробуй MP4, коротшу анімацію або менший розмір.`,
+      fit.fits ? `Fits. Settings: ${note}.` : `Could not fit into ${targetMb} MB. Smallest result: ${note}. Try MP4, a shorter animation or a smaller size.`,
       !fit.fits);
   });
 
@@ -92,43 +89,42 @@ export function ExportPanel({ project, assets }: Props) {
 
   return (
     <>
-      <Section id="exp-format" title="Формат файлу">
-        <Seg label="Формат файлу" value={s.format} onChange={(format) => set({ format })} options={[{ id: 'mp4', label: 'MP4 (відео)' }, { id: 'gif', label: 'GIF' }]} />
-        <Seg label="Кадрів за секунду" value={s.fps} onChange={(fps) => set({ fps })} options={[24, 30, 60].map((f) => ({ id: f, label: String(f) }))} />
-        {s.format === 'gif' && <Hint>GIF зберігає час кадру в сотих частках секунди, тож реальна частота трохи відрізняється (24 → ≈25, 30 → ≈33, 60 → ≈50 к/с).</Hint>}
-        <Seg label="Якість" value={s.mode} onChange={(mode) => set({ mode })} options={MODES.map((m) => ({ id: m.id, label: m.label, title: m.hint }))} />
+      <Section id="exp-format" title="Format">
+        <Seg label="File format" value={s.format} onChange={(format) => set({ format })} options={[{ id: 'mp4', label: 'MP4' }, { id: 'gif', label: 'GIF' }]} />
+        <Seg label="Frames per second" value={s.fps} onChange={(fps) => set({ fps })} options={[24, 30, 60].map((f) => ({ id: f, label: `${f} fps` }))} />
+        <Seg label="Quality" value={s.mode} onChange={(mode) => set({ mode })} options={MODES} />
         {s.mode === 'custom' && (
           <>
             {s.format === 'gif'
-              ? <SliderRow label="Якість GIF" value={s.gifQuality} min={50} max={100} step={1} onChange={(gifQuality) => set({ gifQuality })} />
-              : <SliderRow label="Бітрейт, Мбіт/с" value={s.mp4Mbps} min={0.5} max={30} step={0.5} decimals={1} onChange={(mp4Mbps) => set({ mp4Mbps })} />}
-            <SliderRow label="Розмір, %" value={s.scale} min={0.3} max={1} step={0.05} scale={100} onChange={(scale) => set({ scale })} />
+              ? <SliderRow label="GIF quality" value={s.gifQuality} min={50} max={100} step={1} onChange={(gifQuality) => set({ gifQuality })} />
+              : <SliderRow label="Bitrate, Mbit/s" value={s.mp4Mbps} min={0.5} max={30} step={0.5} decimals={1} onChange={(mp4Mbps) => set({ mp4Mbps })} />}
+            <SliderRow label="Size, %" value={s.scale} min={0.3} max={1} step={0.05} scale={100} onChange={(scale) => set({ scale })} />
           </>
         )}
       </Section>
 
-      <Section id="exp-size" title="Розмір файлу">
-        <Row label="Файл"><b className="val">{size.w}×{size.h}, {s.fps} к/с</b></Row>
-        <Row label="Орієнтовно">
+      <Section id="exp-size" title="File size">
+        <Row label="File"><b className="val">{size.w}×{size.h}, {s.fps} fps</b></Row>
+        <Row label="Estimate">
           <b className={`val ${estimate.bytes !== null && estimate.bytes > targetMb * 1e6 ? 'over' : ''}`}>
-            {empty ? '—' : tooBig ? 'забагато кадрів' : estimate.loading ? 'рахую…' : `≈ ${mb(estimate.bytes!)}`}
+            {empty ? '—' : tooBig ? 'too many frames' : estimate.loading ? 'estimating…' : `≈ ${mb(estimate.bytes!)}`}
           </b>
         </Row>
-        {tooBig && <Hint tone="warn">Для GIF забагато кадрів у такому розмірі. Зменш FPS, розмір або обери MP4.</Hint>}
-        <Row label="Вмістити в, МБ"><NumberField value={targetMb} min={0.5} max={500} step={0.5} decimals={1} width={56} onChange={setTargetMb} /></Row>
-        <CheckRow label="Можна зменшувати розмір" checked={allowScale} onChange={setAllowScale} />
-        <button disabled={empty || busy !== null} onClick={doFit}>Вмістити в {targetMb} МБ і експортувати</button>
+        {tooBig && <Hint tone="warn">Too many frames for GIF at this size. Lower the FPS or size, or use MP4.</Hint>}
+        <Row label="Fit to, MB"><NumberField value={targetMb} min={0.5} max={500} step={0.5} decimals={1} width={56} onChange={setTargetMb} /></Row>
+        <CheckRow label="Allow scaling down" checked={allowScale} onChange={setAllowScale} />
+        <button disabled={empty || busy !== null} onClick={doFit}>Fit into {targetMb} MB and export</button>
       </Section>
 
       <div className="pad">
-        <button className="primary" disabled={empty || busy !== null || tooBig} onClick={doExport}>Експортувати {s.format === 'mp4' ? 'MP4' : 'GIF'}</button>
+        <button className="primary" disabled={empty || busy !== null || tooBig} onClick={doExport}>Export {s.format === 'mp4' ? 'MP4' : 'GIF'}</button>
       </div>
 
       {busy && (
         <div className="pad busy" role="status">
           <span>{busy.text}</span>
           <progress max={1} value={busy.progress ?? undefined} />
-          <button onClick={() => abortRef.current?.abort()}>Скасувати</button>
+          <button onClick={() => abortRef.current?.abort()}>Cancel</button>
         </div>
       )}
       {error && <div className="pad"><Hint tone="warn">{error}</Hint></div>}
@@ -136,10 +132,10 @@ export function ExportPanel({ project, assets }: Props) {
         <div className="pad result">
           <Row label={result.name}><b className={`val ${result.bytes > targetMb * 1e6 ? 'over' : ''}`}>{mb(result.bytes)}</b></Row>
           {result.note && <Hint tone={result.warn ? 'warn' : undefined}>{result.note}</Hint>}
-          <a className="download" href={result.url} download={result.name}>Скачати</a>
+          <a className="download" href={result.url} download={result.name}>Download</a>
           {result.format === 'mp4'
             ? <video src={result.url} controls loop muted playsInline />
-            : <img src={result.url} alt="Результат експорту" />}
+            : <img src={result.url} alt="Export result" />}
         </div>
       )}
     </>

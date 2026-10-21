@@ -11,6 +11,11 @@ export function addFrames(project: Project, frames: Frame[]): Project {
   return { ...project, frames: [...project.frames, ...frames] };
 }
 
+/** Міняє картинку першого шару, усе інше в кадрі (тривалість, рух, перехід) лишається. */
+export function replaceFrameImage(project: Project, id: string, src: string): Project {
+  return mapFrame(project, id, (f) => ({ ...f, layers: f.layers.map((l, i) => (i === 0 ? { ...l, src } : l)) }));
+}
+
 export function removeFrame(project: Project, id: string): Project {
   return { ...project, frames: project.frames.filter((f) => f.id !== id) };
 }
