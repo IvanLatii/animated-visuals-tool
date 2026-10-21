@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 // Дрібні однакові елементи інтерфейсу: рядок «підпис — контроль», повзунок із числом, перемикач, розділ, що згортається.
 
@@ -70,10 +70,29 @@ export function SliderRow({ label, value, min, max, step, onChange, scale = 1, d
   );
 }
 
+/** Темна заливка вибраного пункту плавно переїжджає: міряємо позицію активної кнопки й віддаємо CSS через змінні. */
+function usePill(ref: RefObject<HTMLElement | null>, active: unknown) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const on = el.querySelector<HTMLElement>('button.on');
+      el.style.setProperty('--pill-x', `${on?.offsetLeft ?? 0}px`);
+      el.style.setProperty('--pill-w', `${on?.offsetWidth ?? 0}px`);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, active]);
+}
+
 export function Seg<T extends string | number>({ value, options, onChange, label }:
   { value: T; options: { id: T; label: string; title?: string; disabled?: boolean }[]; onChange: (v: T) => void; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  usePill(ref, value);
   return (
-    <div className="seg" role="group" aria-label={label}>
+    <div ref={ref} className="seg pill-host" role="group" aria-label={label}>
       {options.map((o) => (
         <button key={String(o.id)} className={o.id === value ? 'on' : ''} title={o.title} disabled={o.disabled} onClick={() => onChange(o.id)}>{o.label}</button>
       ))}
@@ -94,4 +113,17 @@ export function SelectRow<T extends string>({ label, value, options, onChange }:
 
 export function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return <Row label={label}><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /></Row>;
+}
+
+export function Tabs<T extends string>({ value, options, onChange, label }:
+  { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  usePill(ref, value);
+  return (
+    <div ref={ref} className="tabs pill-host" role="tablist" aria-label={label}>
+      {options.map((o) => (
+        <button key={o.id} role="tab" aria-selected={o.id === value} className={o.id === value ? 'on' : ''} onClick={() => onChange(o.id)}>{o.label}</button>
+      ))}
+    </div>
+  );
 }

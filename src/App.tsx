@@ -175,18 +175,17 @@ export function App() {
         void addFiles(e.dataTransfer.files);
       }}>
       <header className="topbar">
-        <b className="brand">Animated Visuals</b>
         <input className="name" value={project.name ?? ''} placeholder="Untitled" aria-label="Project name" maxLength={60}
           onChange={(e) => setProject((p) => setProjectName(p, e.target.value))} />
         <button onClick={() => openRef.current?.click()}>Open</button>
         <button onClick={saveProject}>Save</button>
         <input ref={openRef} type="file" accept=".json,application/json" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void openProject(f); e.target.value = ''; }} />
-        <span className="spacer" />
         <Seg label="Theme" value={theme} onChange={setTheme} options={[
           { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'Auto' },
         ]} />
-        <button className="primary" onClick={() => setExportOpen(true)}>Export</button>
+        <b className="brand">Animated Visuals</b>
+        <button className="primary export-btn" onClick={() => setExportOpen(true)}>Export</button>
       </header>
       <FrameList project={project} selectedId={selectedId}
         onSelect={setSelectedId}
