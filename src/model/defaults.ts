@@ -16,12 +16,13 @@ export const DEFAULT_TRANSITION: Transition = { type: 'crossfade', duration: 0.3
 
 export const DEFAULTS: Defaults = {
   frameDuration: 1.0,
+  layerFit: 'fill',
   motion: DEFAULT_MOTION,
   transitionOut: DEFAULT_TRANSITION,
 };
 
-export function imageLayer(src: string, fit: Layer['fit'] = 'fill'): Layer {
-  return { type: 'image', src, x: 0, y: 0, w: 1, h: 1, fit };
+export function imageLayer(src: string): Layer {
+  return { type: 'image', src, x: 0, y: 0, w: 1, h: 1 };
 }
 
 export function newProject(preset: keyof typeof CANVAS_PRESETS = '1:1'): Project {

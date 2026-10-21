@@ -29,7 +29,8 @@ export interface ImageLayer {
   /** data URL або blob URL. У JSON-файлі проєкту — data URL. */
   src: string;
   x: number; y: number; w: number; h: number; // 0–1
-  fit: 'fit' | 'fill';
+  /** Не задано — береться Defaults.layerFit. */
+  fit?: 'fit' | 'fill';
 }
 export type Layer = ImageLayer; // 'text' | '3d' — пізніше
 
@@ -44,6 +45,7 @@ export interface Frame {
 
 export interface Defaults {
   frameDuration: number;
+  layerFit: 'fit' | 'fill';
   motion: Motion;
   transitionOut: Transition;
 }

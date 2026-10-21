@@ -43,12 +43,12 @@ export function projectDuration(project: Project): number {
   return buildTimeline(project).total;
 }
 
-function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, assets: Assets) {
+function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fill', assets: Assets) {
   const img = assets.get(layer.src);
   if (!img) return;
   const { width: W, height: H } = ctx.canvas;
   const rx = layer.x * W, ry = layer.y * H, rw = layer.w * W, rh = layer.h * H;
-  const k = layer.fit === 'fill'
+  const k = fit === 'fill'
     ? Math.max(rw / img.width, rh / img.height)
     : Math.min(rw / img.width, rh / img.height);
   const w = img.width * k, h = img.height * k;
@@ -58,14 +58,14 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, assets: Assets) 
   ctx.restore();
 }
 
-function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, progress: number, assets: Assets) {
+function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets) {
   const { width: W, height: H } = ctx.canvas;
   const tr = motions[rf.motion.type](rf.motion, progress);
   ctx.save();
   ctx.translate(W / 2 + tr.dx * W, H / 2 + tr.dy * H);
   ctx.scale(tr.scale, tr.scale);
   ctx.translate(-W / 2, -H / 2);
-  for (const layer of rf.frame.layers) drawLayer(ctx, layer, assets);
+  for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets);
   ctx.restore();
 }
 
@@ -78,6 +78,7 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
   ctx.fillStyle = project.canvas.background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  const fitDefault = project.defaults.layerFit;
   const { items, total } = buildTimeline(project);
   if (!items.length) return;
   const time = Math.min(Math.max(t, 0), total);
@@ -99,10 +100,10 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
     transitions[tr.type](
       ctx,
       applyEasing(tr.easing, p),
-      () => drawFrame(ctx, prev.rf, progressOf(prev), assets),
-      () => drawFrame(ctx, cur.rf, progressOf(cur), assets),
+      () => drawFrame(ctx, prev.rf, fitDefault, progressOf(prev), assets),
+      () => drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets),
     );
   } else {
-    drawFrame(ctx, cur.rf, progressOf(cur), assets);
+    drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets);
   }
 }

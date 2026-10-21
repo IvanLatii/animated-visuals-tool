@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import type { Project } from '../model/types';
 import { renderScene, type Assets } from '../render/renderScene';
 
@@ -6,6 +6,7 @@ interface Props {
   project: Project;
   assets: Assets;
   t: number;
+  showSafe: boolean;
   playing: boolean;
   loop: boolean;
   duration: number;
@@ -13,9 +14,10 @@ interface Props {
   onToggleLoop: (v: boolean) => void;
 }
 
-export function Preview({ project, assets, t, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, showSafe, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { w, h } = project.canvas;
+  const safe = project.canvas.safeZone ?? { top: 0.05, right: 0.05, bottom: 0.05, left: 0.05 };
 
   useEffect(() => {
     if (canvasRef.current) renderScene(project, t, canvasRef.current, assets);
@@ -25,7 +27,12 @@ export function Preview({ project, assets, t, playing, loop, duration, onToggleP
   return (
     <section className="preview">
       <div className="stage">
-        <canvas ref={canvasRef} width={w} height={h} style={{ aspectRatio: `${w} / ${h}` }} />
+        <div className="canvas-wrap" style={{ '--ar': w / h } as CSSProperties}>
+          <canvas ref={canvasRef} width={w} height={h} />
+          {showSafe && safe && (
+            <div className="safe-zone" style={{ inset: `${safe.top * 100}% ${safe.right * 100}% ${safe.bottom * 100}% ${safe.left * 100}%` }} />
+          )}
+        </div>
         {empty && <div className="empty">Додай картинки, щоб побачити прев'ю</div>}
       </div>
       <div className="transport">

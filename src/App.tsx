@@ -7,7 +7,7 @@ import { Timeline } from './components/Timeline';
 import { newProject } from './model/defaults';
 import type { Project } from './model/types';
 import { projectDuration, type Assets } from './render/renderScene';
-import { addFrames, moveFrame, newFrame, removeFrame, setDefaultFrameDuration, setFrameDuration } from './state/projectActions';
+import { addFrames, moveFrame, newFrame, removeFrame } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
 
@@ -18,6 +18,7 @@ export function App() {
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(true);
+  const [showSafe, setShowSafe] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const tRef = useRef(0);
@@ -81,11 +82,10 @@ export function App() {
         onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelectedId((s) => (s === id ? null : s)); }}
         onMove={(from, to) => setProject((p) => moveFrame(p, from, to))}
         onPickFiles={(files) => void addFiles(files)} />
-      <Preview project={project} assets={assets} t={t} playing={playing} loop={loop} duration={duration}
+      <Preview project={project} assets={assets} t={t} showSafe={showSafe} playing={playing} loop={loop} duration={duration}
         onTogglePlay={togglePlay} onToggleLoop={setLoop} />
       <SettingsPanel project={project} selectedId={selectedId} duration={duration}
-        onDefaultDuration={(d) => setProject((p) => setDefaultFrameDuration(p, d))}
-        onFrameDuration={(id, d) => setProject((p) => setFrameDuration(p, id, d))} />
+        showSafe={showSafe} onShowSafe={setShowSafe} onChange={(fn) => setProject(fn)} />
       <Timeline project={project} t={t} selectedId={selectedId} onSeek={seek} onSelect={setSelectedId} />
       {error && <div className="toast" role="alert" onClick={() => setError(null)}>{error}</div>}
     </div>
