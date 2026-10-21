@@ -125,3 +125,16 @@ export function applyMotionProfile(project: Project, profile: MotionProfile): Pr
   });
   return { ...project, defaults, frames };
 }
+
+/** Змінює загальну тривалість: усі тривалості кадрів (і значення за замовчуванням) масштабуються пропорційно. */
+export function scaleTotalDuration(project: Project, total: number): Project {
+  const current = project.frames.reduce((sum, f) => sum + (f.duration ?? project.defaults.frameDuration), 0);
+  if (current <= 0 || total <= 0) return project;
+  const k = total / current;
+  const scale = (v: number) => Math.min(30, Math.max(0.1, Math.round(v * k * 100) / 100));
+  return {
+    ...project,
+    defaults: { ...project.defaults, frameDuration: scale(project.defaults.frameDuration) },
+    frames: project.frames.map((f) => (f.duration === undefined ? f : { ...f, duration: scale(f.duration) })),
+  };
+}

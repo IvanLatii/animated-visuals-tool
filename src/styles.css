@@ -36,17 +36,20 @@ button.primary:hover:not(:disabled) { filter: brightness(1.1); }
 button.icon { width: var(--h); padding: 0; font-size: 12px; letter-spacing: 0; }
 button.link { height: auto; padding: 0; border: none; background: none; color: var(--accent); text-transform: none; letter-spacing: 0; font-size: 11px; justify-content: flex-start; }
 input, select { font: 11px var(--mono); color: var(--text); }
-input.num, input.hex, select { height: var(--h); background: transparent; border: none; border-bottom: 1px solid var(--line-strong); padding: 0; min-width: 0; }
+input.num, input.hex { height: var(--h); background: transparent; border: none; padding: 0 6px; min-width: 0; }
+input.num:hover, input.hex:hover, input.num:focus, input.hex:focus { background: var(--bg); }
 input.num { text-align: right; width: 48px; -moz-appearance: textfield; }
 input.num::-webkit-outer-spin-button, input.num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-input.hex { width: 64px; }
-select { max-width: 100%; cursor: pointer; }
+input.hex { width: 72px; }
 input[type=color] { width: var(--h); height: var(--h); padding: 0; border: 1px solid var(--line-strong); background: none; }
-input[type=checkbox] { appearance: none; width: 12px; height: 12px; margin: 0; border: 1px solid var(--ink); background: none; display: inline-grid; place-content: center; cursor: pointer; }
-input[type=checkbox]:checked::before { content: ""; width: 6px; height: 6px; background: var(--ink); }
+input[type=checkbox] { appearance: none; width: 16px; height: 16px; margin: 0; border: 1px solid var(--ink); background: none; display: inline-grid; place-content: center; cursor: pointer; }
+input[type=checkbox]:checked::before { content: ""; width: 8px; height: 8px; background: var(--ink); }
 input[type=range] { appearance: none; background: none; width: 100%; height: var(--h); margin: 0; cursor: pointer; }
-input[type=range]::-webkit-slider-runnable-track { height: 1px; background: var(--line-strong); }
-input[type=range]::-webkit-slider-thumb { appearance: none; width: 8px; height: 8px; margin-top: -4px; background: var(--ink); border: none; }
+input[type=range]::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(to right, var(--ink) var(--p, 0%), var(--line-strong) var(--p, 0%)); }
+input[type=range]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; margin-top: -5px; background: var(--ink); border: none; }
+input[type=range]::-moz-range-track { height: 2px; background: var(--line-strong); }
+input[type=range]::-moz-range-progress { height: 2px; background: var(--ink); }
+input[type=range]::-moz-range-thumb { width: 12px; height: 12px; background: var(--ink); border: none; border-radius: 0; }
 input[type=range]:disabled { opacity: .35; }
 input:focus-visible, select:focus-visible, button:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 progress { appearance: none; height: 2px; border: none; background: var(--line); width: 100%; }
@@ -96,9 +99,11 @@ progress::-webkit-progress-value { background: var(--accent); }
 .frame.drop-target { border-top: 2px solid var(--accent); }
 .frame img { width: 100%; height: calc(var(--h) * 2); object-fit: cover; display: block; }
 .frame .num, .frame .dur { color: var(--muted); font-size: 10px; }
-.frame .acts { display: flex; flex-direction: column; }
-.frame .acts .icon { border: none; background: none; }
-.frame .acts .icon:hover:not(:disabled) { color: var(--accent); }
+.frame .icon { border: none; background: none; }
+.frame .icon:hover:not(:disabled) { color: var(--accent); }
+.thumb { position: relative; display: block; }
+.thumb .rep { position: absolute; inset: 0; width: 100%; height: 100%; border: none; background: rgb(0 0 0 / .55); color: #fff; opacity: 0; transition: opacity .15s; }
+.frame:hover .thumb .rep, .thumb .rep:focus-visible { opacity: 1; }
 
 /* --- Прев'ю --- */
 .preview { flex: 1; display: flex; flex-direction: column; background: var(--bg); }
@@ -157,9 +162,7 @@ progress::-webkit-progress-value { background: var(--accent); }
 .group { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .grp { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
 .grp em { font-style: normal; color: var(--accent); font-weight: 400; letter-spacing: 0; text-transform: none; }
-.easing { display: flex; gap: 12px; align-items: flex-start; }
-.easing-fields { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.curve { width: 56px; height: 56px; flex: none; }
+.curve { width: 100%; height: 64px; display: block; }
 .pad { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
 .pad > button { width: 100%; }
 .sec-body > button:not(.link) { width: 100%; }
@@ -199,3 +202,20 @@ input.name::placeholder { color: var(--muted); }
 .export-foot { flex: none; display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-top: 1px solid var(--line); }
 .export-foot .summary { margin: 0; flex: 1; color: var(--muted); min-width: 0; }
 .export-foot .primary { flex: none; }
+
+/* --- Ітерація 2 кроку: дропдауни, підказки --- */
+.r.wide .ctl { width: 50%; }
+.r.wide .ctl > * { width: 100%; }
+button.dd { justify-content: space-between; padding: 0 8px; text-transform: none; letter-spacing: 0; font-size: 11px; }
+button.dd > span { overflow: hidden; text-overflow: ellipsis; }
+.caret { flex: none; width: 8px; height: 5px; background: currentColor; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.dd-menu { position: fixed; z-index: 80; background: var(--panel); border: 1px solid var(--ink); }
+.dd-menu div { height: var(--h); display: flex; align-items: center; padding: 0 8px; cursor: pointer; font-size: 11px; }
+.dd-menu div.act { background: var(--bg); }
+.dd-menu div.cur { font-weight: 600; }
+
+[data-tip] { position: relative; }
+[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--on-ink); font: 10px var(--mono); letter-spacing: .02em; text-transform: none; padding: 3px 6px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s; z-index: 70; }
+[data-tip]:hover::after { opacity: 1; transition-delay: .5s; }
+[data-tip-pos="top"]::after { top: auto; bottom: calc(100% + 6px); }
+[data-tip-pos="left"]::after { left: auto; right: calc(100% + 6px); top: 50%; transform: translateY(-50%); }

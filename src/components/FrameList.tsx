@@ -57,14 +57,14 @@ export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onP
                 }}
                 onDragEnd={() => { setDragFrom(null); setDragOver(null); }}>
                 <span className="num">{i + 1}</span>
-                <img src={frame.layers[0].src} alt="" draggable={false} />
-                <span className="dur">{rf.duration.toFixed(1)} s</span>
-                <span className="acts">
-                  <button className="icon" title="Replace image" aria-label={`Replace image of frame ${i + 1}`}
-                    onClick={(e) => { e.stopPropagation(); replaceId.current = frame.id; replaceRef.current?.click(); }}>↻</button>
-                  <button className="icon" title="Delete frame" aria-label={`Delete frame ${i + 1}`}
-                    onClick={(e) => { e.stopPropagation(); onRemove(frame.id); }}>×</button>
+                <span className="thumb">
+                  <img src={frame.layers[0].src} alt="" draggable={false} />
+                  <button className="rep" aria-label={`Replace image of frame ${i + 1}`}
+                    onClick={(e) => { e.stopPropagation(); replaceId.current = frame.id; replaceRef.current?.click(); }}>Replace</button>
                 </span>
+                <span className="dur">{rf.duration.toFixed(1)} s</span>
+                <button className="icon" data-tip="Delete frame · Delete" data-tip-pos="left" aria-label={`Delete frame ${i + 1}`}
+                  onClick={(e) => { e.stopPropagation(); onRemove(frame.id); }}>×</button>
               </li>
             );
           })}

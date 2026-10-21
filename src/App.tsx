@@ -19,7 +19,7 @@ import { addFrames, moveFrame, newFrame, removeFrame, replaceFrameImage, setFram
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
 
 /** Чи Іван зараз друкує. strict = true: будь-яке поле вводу (для стрілок), інакше прості контроли (чекбокс, повзунок, кнопка) не рахуються. */
-const isTyping = (t: EventTarget | null, strict = false) => t instanceof HTMLElement && (t.isContentEditable || ['TEXTAREA', 'SELECT'].includes(t.tagName)
+const isTyping = (t: EventTarget | null, strict = false) => t instanceof HTMLElement && (t.isContentEditable || ['TEXTAREA', 'SELECT'].includes(t.tagName) || t.getAttribute('aria-haspopup') === 'listbox'
   || (t instanceof HTMLInputElement && (strict || !['checkbox', 'range', 'button'].includes(t.type))));
 
 export function App() {
@@ -177,8 +177,8 @@ export function App() {
       <header className="topbar">
         <input className="name" value={project.name ?? ''} placeholder="Untitled" aria-label="Project name" maxLength={60}
           onChange={(e) => setProject((p) => setProjectName(p, e.target.value))} />
-        <button onClick={() => openRef.current?.click()}>Open</button>
-        <button onClick={saveProject}>Save</button>
+        <button data-tip="Open project · ⌘ O" onClick={() => openRef.current?.click()}>Open</button>
+        <button data-tip="Save project · ⌘ S" onClick={saveProject}>Save</button>
         <input ref={openRef} type="file" accept=".json,application/json" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void openProject(f); e.target.value = ''; }} />
         <Seg label="Theme" value={theme} onChange={setTheme} options={[

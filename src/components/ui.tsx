@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { Dropdown } from './Dropdown';
 
 // Дрібні однакові елементи інтерфейсу: рядок «підпис — контроль», повзунок із числом, перемикач, розділ, що згортається.
 
@@ -16,13 +17,19 @@ function writeOpen(id: string, open: boolean) {
   } catch { /* ігноруємо */ }
 }
 
+/** Відкрито / закрито, що пам'ятається між запусками. */
+export function useStoredOpen(id: string, fallback: boolean): [boolean, (v: boolean) => void] {
+  const [open, setOpen] = useState(() => readOpen(id, fallback));
+  return [open, (v) => { setOpen(v); writeOpen(id, v); }];
+}
+
 export function Section({ id, title, defaultOpen = true, aside, children }:
   { id: string; title: string; defaultOpen?: boolean; aside?: ReactNode; children: ReactNode }) {
-  const [open, setOpen] = useState(() => readOpen(id, defaultOpen));
+  const [open, setOpen] = useStoredOpen(id, defaultOpen);
   return (
     <section className="sec">
       <header>
-        <button className="sec-toggle" aria-expanded={open} onClick={() => { setOpen(!open); writeOpen(id, !open); }}>
+        <button className="sec-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span>{title}</span><i aria-hidden>{open ? '–' : '+'}</i>
         </button>
         {aside}
@@ -32,8 +39,9 @@ export function Section({ id, title, defaultOpen = true, aside, children }:
   );
 }
 
-export function Row({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="r"><span className="lab">{label}</span><span className="ctl">{children}</span></label>;
+/** wide: контроль займає половину рядка (як таби над ним). */
+export function Row({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
+  return <label className={`r ${wide ? 'wide' : ''}`}><span className="lab">{label}</span><span className="ctl">{children}</span></label>;
 }
 
 export function Hint({ children, tone }: { children: ReactNode; tone?: 'warn' }) {
@@ -63,6 +71,7 @@ export function SliderRow({ label, value, min, max, step, onChange, scale = 1, d
     <div className="r slider">
       <span className="lab">{label}</span>
       <input type="range" min={min} max={max} step={step} value={value} disabled={disabled} aria-label={label}
+        style={{ '--p': `${((value - min) / (max - min)) * 100}%` } as CSSProperties}
         onChange={(e) => onChange(Number(e.target.value))} />
       <NumberField value={value * scale} min={min * scale} max={max * scale} step={step * scale} decimals={decimals}
         onChange={(v) => onChange(v / scale)} width={48} />
@@ -103,10 +112,8 @@ export function Seg<T extends string | number>({ value, options, onChange, label
 export function SelectRow<T extends string>({ label, value, options, onChange }:
   { label: string; value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
   return (
-    <Row label={label}>
-      <select value={value} onChange={(e) => onChange(e.target.value as T)}>
-        {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-      </select>
+    <Row label={label} wide>
+      <Dropdown label={label} value={value} options={options} onChange={onChange} />
     </Row>
   );
 }

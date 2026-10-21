@@ -126,14 +126,14 @@ export function Preview({ project, assets, t, showSafe, playing, loop, duration,
         </div>
         {empty && <div className="empty">Add images to see the preview</div>}
         <div className="zoombar" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-          <button onClick={() => zoomBy(0.8)} aria-label="Zoom out" title="Zoom out">−</button>
-          <button className="pct" onClick={() => zoomTo(1 / fit)}>{pct}%</button>
-          <button onClick={() => zoomBy(1.25)} aria-label="Zoom in" title="Zoom in">+</button>
-          <button onClick={fitView}>Fit</button>
+          <button onClick={() => zoomBy(0.8)} aria-label="Zoom out" data-tip="Zoom out · ⌘ −">−</button>
+          <button className="pct" data-tip="Actual size · ⌘ 1" onClick={() => zoomTo(1 / fit)}>{pct}%</button>
+          <button onClick={() => zoomBy(1.25)} aria-label="Zoom in" data-tip="Zoom in · ⌘ +">+</button>
+          <button data-tip="Fit to screen · ⌘ 0" onClick={fitView}>Fit</button>
         </div>
       </div>
       <div className="transport">
-        <button className="primary play" onClick={onTogglePlay} disabled={empty}>{playing ? '❚❚  Pause' : '▶  Play'}</button>
+        <button className="primary play" data-tip="Play / pause · Space" data-tip-pos="top" onClick={onTogglePlay} disabled={empty}>{playing ? '❚❚  Pause' : '▶  Play'}</button>
         <label className="chk"><input type="checkbox" checked={loop} onChange={(e) => onToggleLoop(e.target.checked)} /> Loop</label>
         <span className="time">{Math.min(t, duration).toFixed(2)} / {duration.toFixed(2)} s</span>
       </div>

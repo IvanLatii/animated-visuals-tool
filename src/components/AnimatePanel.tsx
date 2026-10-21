@@ -5,7 +5,7 @@ import * as A from '../state/projectActions';
 import { MOTION_PROFILES } from '../model/profiles';
 import { MotionControls, TransitionControls } from './AnimationControls';
 import { FitControls } from './FitControls';
-import { Row, Section, SelectRow, Seg, SliderRow } from './ui';
+import { NumberField, Row, Section, SelectRow, Seg, SliderRow } from './ui';
 
 interface Props {
   project: Project;
@@ -28,7 +28,12 @@ export function AnimatePanel({ project, selectedId, duration, onChange }: Props)
           { id: 'project', label: 'Whole project' },
           { id: 'frame', label: frame ? `Frame ${index + 1}` : 'Frame', disabled: !frame },
         ]} />
-        {!editFrame && <Row label="Total duration"><b className="val">{duration.toFixed(1)} s</b></Row>}
+        {!editFrame && project.frames.length > 0 && (
+          <Row label="Total duration, s">
+            <NumberField value={duration} min={project.frames.length * 0.1} max={project.frames.length * 30} step={0.5} decimals={1}
+              onChange={(v) => onChange((pr) => A.scaleTotalDuration(pr, v))} />
+          </Row>
+        )}
       </Section>
 
       <Section id="anim" title="Animation">
