@@ -3,9 +3,9 @@ import workerUrl from 'gif.js/dist/gif.worker.js?url';
 import { Output, Mp4OutputFormat, BufferTarget, CanvasSource, Quality } from 'mediabunny';
 
 const W = 1080, H = 1080, FPS = 24;
-const HOLD = 1.5, FADE = 0.5; // секунд на кадр / на crossfade
+const HOLD = 1.0, FADE = 0.3; // секунд на кадр / на crossfade (кадри накладаються на FADE)
 const N = 3;
-const DURATION = N * HOLD + (N - 1) * FADE;
+const DURATION = N * HOLD;
 
 const log = (s: string) => { document.getElementById('log')!.textContent += '\n' + s; };
 
@@ -28,10 +28,10 @@ function makeShot(i: number): HTMLCanvasElement {
 }
 const shots = [0, 1, 2].map(makeShot);
 
-const ease = (x: number) => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; // ease-in-out
+const ease = (x: number) => 1 - Math.pow(1 - x, 2); // ease-out: швидкий старт, без зупинки в кінці
 
 function drawShot(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, p: number, alpha: number) {
-  const zoom = 1 + 0.12 * ease(Math.min(1, Math.max(0, p))); // зум in по центру
+  const zoom = 1 + 0.2 * ease(Math.min(1, Math.max(0, p))); // зум in по центру
   const scale = Math.max(W / img.width, H / img.height) * zoom; // fill
   const w = img.width * scale, h = img.height * scale;
   ctx.globalAlpha = alpha;
@@ -43,7 +43,7 @@ function drawShot(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, p: numb
 function renderScene(canvas: HTMLCanvasElement, t: number) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  const step = HOLD + FADE;
+  const step = HOLD;
   for (let i = 0; i < N; i++) {
     const start = i * step, end = start + HOLD + (i < N - 1 ? FADE : 0);
     if (t < start || t > end) continue;
