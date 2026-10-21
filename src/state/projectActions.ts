@@ -16,6 +16,10 @@ export function replaceFrameImage(project: Project, id: string, src: string): Pr
   return mapFrame(project, id, (f) => ({ ...f, layers: f.layers.map((l, i) => (i === 0 ? { ...l, src } : l)) }));
 }
 
+export function setProjectName(project: Project, name: string): Project {
+  return { ...project, name };
+}
+
 export function removeFrame(project: Project, id: string): Project {
   return { ...project, frames: project.frames.filter((f) => f.id !== id) };
 }

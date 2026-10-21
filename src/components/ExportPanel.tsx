@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS, settingsFromJob, toJob, type ExportSettings, type Qua
 import { exportSize, ExportAborted } from '../export/renderFrames';
 import type { ExportJob, Project } from '../model/types';
 import { projectDuration, type Assets } from '../render/renderScene';
-import { CheckRow, Hint, NumberField, Row, Section, Seg, SliderRow } from './ui';
+import { CheckRow, Hint, NumberField, Row, Seg, SliderRow } from './ui';
 
 interface Props { project: Project; assets: Assets }
 interface Busy { text: string; progress: number | null }
@@ -87,57 +87,65 @@ export function ExportPanel({ project, assets }: Props) {
 
   const set = (patch: Partial<ExportSettings>) => setS((p) => ({ ...p, ...patch }));
 
+  const estimateText = empty ? '—' : tooBig ? 'too many frames' : estimate.loading ? 'estimating…' : `≈ ${mb(estimate.bytes!)}`;
+  const presetLabel = project.canvas.preset === 'custom' ? 'custom' : project.canvas.preset;
   return (
-    <>
-      <Section id="exp-format" title="Format">
-        <Seg label="File format" value={s.format} onChange={(format) => set({ format })} options={[{ id: 'mp4', label: 'MP4' }, { id: 'gif', label: 'GIF' }]} />
-        <Seg label="Frames per second" value={s.fps} onChange={(fps) => set({ fps })} options={[24, 30, 60].map((f) => ({ id: f, label: `${f} fps` }))} />
-        <Seg label="Quality" value={s.mode} onChange={(mode) => set({ mode })} options={MODES} />
-        {s.mode === 'custom' && (
-          <>
-            {s.format === 'gif'
-              ? <SliderRow label="GIF quality" value={s.gifQuality} min={50} max={100} step={1} onChange={(gifQuality) => set({ gifQuality })} />
-              : <SliderRow label="Bitrate, Mbit/s" value={s.mp4Mbps} min={0.5} max={30} step={0.5} decimals={1} onChange={(mp4Mbps) => set({ mp4Mbps })} />}
-            <SliderRow label="Size, %" value={s.scale} min={0.3} max={1} step={0.05} scale={100} onChange={(scale) => set({ scale })} />
-          </>
-        )}
-      </Section>
+    <div className="export">
+      <nav className="export-nav" aria-label="File format">
+        <span className="grp">Video</span>
+        <button className={s.format === 'mp4' ? 'on' : ''} onClick={() => set({ format: 'mp4' })}>MP4</button>
+        <span className="grp">Image</span>
+        <button className={s.format === 'gif' ? 'on' : ''} onClick={() => set({ format: 'gif' })}>GIF</button>
+      </nav>
+      <div className="export-main">
+        <div className="export-body">
+          <div className="group first">
+            <div className="grp">Quality</div>
+            <Seg label="Frames per second" value={s.fps} onChange={(fps) => set({ fps })} options={[24, 30, 60].map((f) => ({ id: f, label: `${f} fps` }))} />
+            <Seg label="Quality" value={s.mode} onChange={(mode) => set({ mode })} options={MODES} />
+            {s.mode === 'custom' && (
+              <>
+                {s.format === 'gif'
+                  ? <SliderRow label="GIF quality" value={s.gifQuality} min={50} max={100} step={1} onChange={(gifQuality) => set({ gifQuality })} />
+                  : <SliderRow label="Bitrate, Mbit/s" value={s.mp4Mbps} min={0.5} max={30} step={0.5} decimals={1} onChange={(mp4Mbps) => set({ mp4Mbps })} />}
+                <SliderRow label="Size, %" value={s.scale} min={0.3} max={1} step={0.05} scale={100} onChange={(scale) => set({ scale })} />
+              </>
+            )}
+          </div>
 
-      <Section id="exp-size" title="File size">
-        <Row label="File"><b className="val">{size.w}×{size.h}, {s.fps} fps</b></Row>
-        <Row label="Estimate">
-          <b className={`val ${estimate.bytes !== null && estimate.bytes > targetMb * 1e6 ? 'over' : ''}`}>
-            {empty ? '—' : tooBig ? 'too many frames' : estimate.loading ? 'estimating…' : `≈ ${mb(estimate.bytes!)}`}
-          </b>
-        </Row>
-        {tooBig && <Hint tone="warn">Too many frames for GIF at this size. Lower the FPS or size, or use MP4.</Hint>}
-        <Row label="Fit to, MB"><NumberField value={targetMb} min={0.5} max={500} step={0.5} decimals={1} width={56} onChange={setTargetMb} /></Row>
-        <CheckRow label="Allow scaling down" checked={allowScale} onChange={setAllowScale} />
-        <button disabled={empty || busy !== null} onClick={doFit}>Fit into {targetMb} MB and export</button>
-      </Section>
+          <div className="group">
+            <div className="grp">File size</div>
+            <Row label="Estimate"><b className={`val ${estimate.bytes !== null && estimate.bytes > targetMb * 1e6 ? 'over' : ''}`}>{estimateText}</b></Row>
+            {tooBig && <Hint tone="warn">Too many frames for GIF at this size. Lower the FPS or size, or use MP4.</Hint>}
+            <Row label="Fit to, MB"><NumberField value={targetMb} min={0.5} max={500} step={0.5} decimals={1} width={56} onChange={setTargetMb} /></Row>
+            <CheckRow label="Allow scaling down" checked={allowScale} onChange={setAllowScale} />
+            <button disabled={empty || busy !== null} onClick={doFit}>Fit into {targetMb} MB and export</button>
+          </div>
 
-      <div className="pad">
-        <button className="primary" disabled={empty || busy !== null || tooBig} onClick={doExport}>Export {s.format === 'mp4' ? 'MP4' : 'GIF'}</button>
+          {busy && (
+            <div className="group" role="status">
+              <span className="hint">{busy.text}</span>
+              <progress max={1} value={busy.progress ?? undefined} />
+              <button onClick={() => abortRef.current?.abort()}>Cancel</button>
+            </div>
+          )}
+          {error && <Hint tone="warn">{error}</Hint>}
+          {result && (
+            <div className="group">
+              <Row label={result.name}><b className={`val ${result.bytes > targetMb * 1e6 ? 'over' : ''}`}>{mb(result.bytes)}</b></Row>
+              {result.note && <Hint tone={result.warn ? 'warn' : undefined}>{result.note}</Hint>}
+              <a className="download" href={result.url} download={result.name}>Download</a>
+              {result.format === 'mp4'
+                ? <video src={result.url} controls loop muted playsInline />
+                : <img src={result.url} alt="Export result" />}
+            </div>
+          )}
+        </div>
+        <footer className="export-foot">
+          <p className="summary">{size.w}×{size.h} · {presetLabel} · {duration.toFixed(1)} s @ {s.fps} fps · {estimateText} · {s.format.toUpperCase()}</p>
+          <button className="primary" disabled={empty || busy !== null || tooBig} onClick={doExport}>Export {s.format === 'mp4' ? 'MP4' : 'GIF'}</button>
+        </footer>
       </div>
-
-      {busy && (
-        <div className="pad busy" role="status">
-          <span>{busy.text}</span>
-          <progress max={1} value={busy.progress ?? undefined} />
-          <button onClick={() => abortRef.current?.abort()}>Cancel</button>
-        </div>
-      )}
-      {error && <div className="pad"><Hint tone="warn">{error}</Hint></div>}
-      {result && (
-        <div className="pad result">
-          <Row label={result.name}><b className={`val ${result.bytes > targetMb * 1e6 ? 'over' : ''}`}>{mb(result.bytes)}</b></Row>
-          {result.note && <Hint tone={result.warn ? 'warn' : undefined}>{result.note}</Hint>}
-          <a className="download" href={result.url} download={result.name}>Download</a>
-          {result.format === 'mp4'
-            ? <video src={result.url} controls loop muted playsInline />
-            : <img src={result.url} alt="Export result" />}
-        </div>
-      )}
-    </>
+    </div>
   );
 }

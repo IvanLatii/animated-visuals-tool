@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { fileToDataUrl, loadImage } from './assets';
+import { ExportPanel } from './components/ExportPanel';
+import { Modal } from './components/Modal';
 import { Sidebar } from './components/Sidebar';
 import { FrameList } from './components/FrameList';
 import { Preview } from './components/Preview';
@@ -10,10 +12,15 @@ import { Timeline } from './components/Timeline';
 import { applyTheme, loadTheme, type Theme } from './theme';
 import { newProject } from './model/defaults';
 import type { Project } from './model/types';
-import { projectDuration, type Assets } from './render/renderScene';
-import { addFrames, moveFrame, newFrame, removeFrame, replaceFrameImage } from './state/projectActions';
+import { parseProject, projectFileName, serializeProject } from './model/projectFile';
+import { buildTimeline, loadAssets, projectDuration, type Assets } from './render/renderScene';
+import { addFrames, moveFrame, newFrame, removeFrame, replaceFrameImage, setFrameDuration, setProjectName } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
+
+/** Чи Іван зараз друкує. strict = true: будь-яке поле вводу (для стрілок), інакше прості контроли (чекбокс, повзунок, кнопка) не рахуються. */
+const isTyping = (t: EventTarget | null, strict = false) => t instanceof HTMLElement && (t.isContentEditable || ['TEXTAREA', 'SELECT'].includes(t.tagName)
+  || (t instanceof HTMLInputElement && (strict || !['checkbox', 'range', 'button'].includes(t.type))));
 
 export function App() {
   const [project, setProject] = useState<Project>(() => newProject('1:1'));
@@ -25,6 +32,9 @@ export function App() {
   const [showSafe, setShowSafe] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const openRef = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const tRef = useRef(0);
@@ -69,6 +79,31 @@ export function App() {
     }
   }, []);
 
+  const saveProject = useCallback(() => {
+    const url = URL.createObjectURL(new Blob([serializeProject(project)], { type: 'application/json' }));
+    const name = projectFileName(project);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setNotice(`Saved ${name}`);
+    setTimeout(() => setNotice(null), 2500);
+  }, [project]);
+
+  const openProject = useCallback(async (file: File) => {
+    try {
+      const parsed = parseProject(await file.text());
+      const loaded = await loadAssets(parsed);
+      setAssets(loaded);
+      setProject(parsed);
+      setSelectedId(parsed.frames[0]?.id ?? null);
+      setPlaying(false);
+      seek(0);
+      setError(null);
+    } catch (e) {
+      setError(`Could not open the project: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [seek]);
+
   // Програвання: рахуємо час від кадру до кадру. Позицію тримаємо в ref, щоб цикл не перестворювався щокадру.
   useEffect(() => {
     if (!playing) return;
@@ -95,20 +130,37 @@ export function App() {
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { saveLayout(layout); }, [layout]);
 
-  // Space = play/pause, але не коли Іван друкує в полі.
+  // Гарячі клавіші. Space = play/pause (не коли друкуєш у полі), ⌘S / ⌘O — зберегти / відкрити, ← → — кадр назад / вперед, Delete — видалити кадр.
   useEffect(() => {
-    const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || ['TEXTAREA', 'SELECT'].includes(t.tagName)
-      || (t instanceof HTMLInputElement && !['checkbox', 'range', 'button'].includes(t.type)));
-    const onDown = (e: KeyboardEvent) => {
-      if (e.code !== 'Space' || e.repeat || typing(e.target)) return;
-      e.preventDefault();
-      togglePlay();
+    const goToFrame = (step: number) => {
+      const { items } = buildTimeline(project);
+      if (items.length === 0) return;
+      const cur = Math.max(0, items.findIndex((it) => it.rf.frame.id === selectedId));
+      const next = items[Math.min(items.length - 1, Math.max(0, cur + step))];
+      setSelectedId(next.rf.frame.id);
+      seek(next.start);
     };
-    const onUp = (e: KeyboardEvent) => { if (e.code === 'Space' && !typing(e.target)) e.preventDefault(); }; // щоб Space не «натискав» кнопку у фокусі
+    const onDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 's' || e.key === 'o')) {
+        e.preventDefault();
+        if (e.key === 's') saveProject(); else openRef.current?.click();
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey || exportOpen) return;
+      if (e.code === 'Space' && !e.repeat && !isTyping(e.target)) { e.preventDefault(); togglePlay(); }
+      else if (e.key === 'ArrowLeft' && !isTyping(e.target, true)) { e.preventDefault(); goToFrame(-1); }
+      else if (e.key === 'ArrowRight' && !isTyping(e.target, true)) { e.preventDefault(); goToFrame(1); }
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !isTyping(e.target, true)) {
+        e.preventDefault();
+        setProject((p) => removeFrame(p, selectedId));
+        setSelectedId(null);
+      }
+    };
+    const onUp = (e: KeyboardEvent) => { if (e.code === 'Space' && !isTyping(e.target) && !exportOpen) e.preventDefault(); }; // щоб Space не «натискав» кнопку у фокусі
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-  }, [togglePlay]);
+  }, [togglePlay, saveProject, project, selectedId, seek, exportOpen]);
 
   return (
     <div className={`app ${dropping ? 'dropping' : ''}`}
@@ -124,10 +176,17 @@ export function App() {
       }}>
       <header className="topbar">
         <b className="brand">Animated Visuals</b>
+        <input className="name" value={project.name ?? ''} placeholder="Untitled" aria-label="Project name" maxLength={60}
+          onChange={(e) => setProject((p) => setProjectName(p, e.target.value))} />
+        <button onClick={() => openRef.current?.click()}>Open</button>
+        <button onClick={saveProject}>Save</button>
+        <input ref={openRef} type="file" accept=".json,application/json" hidden
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) void openProject(f); e.target.value = ''; }} />
         <span className="spacer" />
         <Seg label="Theme" value={theme} onChange={setTheme} options={[
           { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'Auto' },
         ]} />
+        <button className="primary" onClick={() => setExportOpen(true)}>Export</button>
       </header>
       <FrameList project={project} selectedId={selectedId}
         onSelect={setSelectedId}
@@ -142,13 +201,18 @@ export function App() {
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
-        <Timeline project={project} t={t} selectedId={selectedId} onSeek={seek} onSelect={setSelectedId} />
+        <Timeline project={project} t={t} selectedId={selectedId} onSeek={seek} onSelect={setSelectedId}
+          onDuration={(id, d) => setProject((p) => setFrameDuration(p, id, d))} />
       </div>
       <Resizer axis="x" invert label="Right panel width" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
-      <Sidebar project={project} assets={assets} selectedId={selectedId} duration={duration}
+      <Sidebar project={project} selectedId={selectedId} duration={duration}
         showSafe={showSafe} onShowSafe={setShowSafe} onChange={(fn: (p: Project) => Project) => setProject(fn)} />
-      {error && <div className="toast" role="alert" onClick={() => setError(null)}>{error}</div>}
+      <Modal open={exportOpen} title="Export" onClose={() => setExportOpen(false)}>
+        <ExportPanel project={project} assets={assets} />
+      </Modal>
+      {error && <div className="toast error" role="alert" onClick={() => setError(null)}>{error}</div>}
+      {!error && notice && <div className="toast" role="status">{notice}</div>}
     </div>
   );
 }

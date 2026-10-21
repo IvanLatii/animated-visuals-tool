@@ -54,6 +54,8 @@ export interface SafeZone { top: number; right: number; bottom: number; left: nu
 
 export interface Project {
   version: 1;
+  /** Назва проєкту: показується зверху й іде в ім'я файлу. */
+  name?: string;
   canvas: {
     w: number; h: number;
     preset: '1:1' | '4:5' | '16:9' | '9:16' | 'custom';
