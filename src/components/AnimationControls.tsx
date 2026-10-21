@@ -1,12 +1,8 @@
-import type { Motion, MotionType, Transition, TransitionType } from '../model/types';
+import type { Motion, Transition, TransitionType } from '../model/types';
 import { EasingControls } from './EasingControls';
+import { MotionPicker } from './MotionPicker';
 import { SelectRow, SliderRow } from './ui';
 
-const MOTIONS: { id: MotionType; label: string }[] = [
-  { id: 'none', label: 'None' }, { id: 'zoom-in', label: 'Zoom in' }, { id: 'zoom-out', label: 'Zoom out' },
-  { id: 'pan-left', label: 'Pan left' }, { id: 'pan-right', label: 'Pan right' }, { id: 'pan-up', label: 'Pan up' }, { id: 'pan-down', label: 'Pan down' },
-  { id: 'tilt-cw', label: 'Tilt clockwise' }, { id: 'tilt-ccw', label: 'Tilt counter-cw' },
-];
 const TRANSITIONS: { id: TransitionType; label: string }[] = [
   { id: 'cut', label: 'Cut' }, { id: 'crossfade', label: 'Crossfade' }, { id: 'wipe-up', label: 'Wipe up' },
 ];
@@ -26,7 +22,7 @@ export function MotionControls({ value, onChange, overridden, onReset }: { value
   return (
     <div className="group">
       <GroupTitle text="Motion" overridden={overridden} onReset={onReset} />
-      <SelectRow label="Type" value={value.type} options={MOTIONS} onChange={(type) => onChange({ type })} />
+      <MotionPicker value={value.type} onChange={(type) => onChange({ type })} />
       {value.type !== 'none' && (
         <>
           <SliderRow label="Strength" value={value.intensity} min={0} max={0.6} step={0.01} scale={100} onChange={(intensity) => onChange({ intensity })} />

@@ -11,9 +11,17 @@ interface Props {
   onExportSettings: (s: ExportSettings) => void;
 }
 
+/** «Preset 1», «Preset 2»… — перше вільне. */
+const nextName = (list: Preset[]) => {
+  const used = new Set(list.map((p) => p.name.toLowerCase()));
+  let n = 1;
+  while (used.has(`preset ${n}`)) n++;
+  return `Preset ${n}`;
+};
+
 export function Presets({ project, exportSettings, onChange, onExportSettings }: Props) {
   const [presets, setPresets] = useState<Preset[]>(loadPresets);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(() => nextName(loadPresets()));
   const [msg, setMsg] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
 
@@ -24,8 +32,9 @@ export function Presets({ project, exportSettings, onChange, onExportSettings }:
     const n = name.trim();
     if (!n) return;
     const exists = presets.some((p) => p.name.toLowerCase() === n.toLowerCase());
-    update(upsertPreset(presets, makePreset(n, project, exportSettings)));
-    setName('');
+    const next = upsertPreset(presets, makePreset(n, project, exportSettings));
+    update(next);
+    setName(nextName(next));
     flash(exists ? `Updated “${n}”` : `Saved “${n}”`);
   };
 

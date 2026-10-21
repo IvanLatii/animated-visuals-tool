@@ -27,14 +27,15 @@ export function Section({ id, title, defaultOpen = true, aside, children }:
   { id: string; title: string; defaultOpen?: boolean; aside?: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useStoredOpen(id, defaultOpen);
   return (
-    <section className="sec">
+    <section className={`sec ${open ? 'open' : ''}`}>
       <header>
         <button className="sec-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span>{title}</span><i aria-hidden>{open ? '–' : '+'}</i>
         </button>
         {aside}
       </header>
-      {open && <div className="sec-body">{children}</div>}
+      {/* Вміст лишається в DOM і плавно згортається (grid 0fr → 1fr), тож стан полів не губиться */}
+      <div className="sec-collapse"><div className="sec-wrap"><div className="sec-body">{children}</div></div></div>
     </section>
   );
 }

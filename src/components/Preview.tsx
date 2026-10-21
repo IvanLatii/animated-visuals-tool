@@ -128,7 +128,7 @@ export function Preview({ project, assets, t, playing, loop, duration, onToggleP
           ))}
           {combined && (
             <div className="safe-zone combined" style={{ inset: `${combined.top * 100}% ${combined.right * 100}% ${combined.bottom * 100}% ${combined.left * 100}%`, '--zc': '#ffd400' } as CSSProperties}>
-              <span>Combined</span>
+              <span>{visibleZones.map((z) => z.name.split(' ')[0]).join(', ')}</span>
             </div>
           )}
           <span className="cap bottom">{presetLabel} · {w}×{h} · {pct}%</span>

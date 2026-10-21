@@ -31,6 +31,7 @@ export function SafeZones({ project, onChange }: Props) {
                   <NumberField value={z[side] * 100} min={0} max={49} step={0.5} decimals={1} onChange={(v) => patch(z.id, { [side]: v / 100, source: 'custom' })} />
                 </Row>
               ))}
+              {z.note && <p className="hint">{z.note}</p>}
               <Row label="Color"><input type="color" value={z.color} onChange={(e) => patch(z.id, { color: e.target.value })} aria-label="Zone color" /></Row>
               <button className="link" onClick={() => { onChange((pr) => A.removeSafeZone(pr, z.id)); setEditing(null); }}>Delete zone</button>
             </div>

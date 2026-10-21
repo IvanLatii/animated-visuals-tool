@@ -209,18 +209,23 @@ export function App() {
         <button data-tip="Save as… · ⌘ ⇧ S" onClick={() => void saveProject(true)}>Save as</button>
         <input ref={openRef} type="file" accept=".json,application/json" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void openProject(f); e.target.value = ''; }} />
-        <Seg label="Theme" value={theme} onChange={setTheme} options={[
-          { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'Auto' },
-        ]} />
         <b className="brand">Animated Visuals</b>
         <button className="primary export-btn" onClick={() => setExportOpen(true)}>Export</button>
       </header>
+      <div className="left">
       <FrameList project={project} selectedId={selectedId}
         onSelect={setSelectedId}
         onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelectedId((s) => (s === id ? null : s)); }}
         onMove={(from, to) => setProject((p) => moveFrame(p, from, to))}
         onPickFiles={(files) => void addFiles(files)}
         onReplace={(id, file) => void replaceFile(id, file)} />
+        <div className="left-foot">
+          <span>Theme</span>
+          <Seg label="Theme" value={theme} onChange={setTheme} options={[
+            { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'Auto' },
+          ]} />
+        </div>
+      </div>
       <Resizer axis="x" label="Left panel width" value={layout.left} min={LIMITS.left[0]} max={LIMITS.left[1]}
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">

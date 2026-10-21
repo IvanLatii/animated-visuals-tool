@@ -30,16 +30,23 @@ export function imageLayer(src: string): Layer {
  * зверху 14%, знизу 35%, з боків по 6% для Reels і Stories — 🟡 не підтверджено). Для LinkedIn, X і UXPUB
  * офіційних safe-зон не опубліковано, тому там стоїть умовні 5%, які користувач змінює сам.
  */
+const NO_OFFICIAL = 'No official safe zone is published for this platform. The margin is a placeholder: set your own.';
+const mk = (id: string, name: string, color: string): SafeZone => ({ id, name, color, top: 0.05, right: 0.05, bottom: 0.05, left: 0.05, visible: false, source: 'custom', note: NO_OFFICIAL });
+
+// Порядок за пріоритетом Івана: LinkedIn, X, UXPUB, Medium, Instagram.
 export const DEFAULT_SAFE_ZONES: SafeZone[] = [
-  { id: 'instagram', name: 'Instagram Reels / Stories', color: '#ff3b8d', top: 0.14, right: 0.06, bottom: 0.35, left: 0.06, visible: false, source: 'unverified' },
-  { id: 'linkedin', name: 'LinkedIn', color: '#0a8bff', top: 0.05, right: 0.05, bottom: 0.05, left: 0.05, visible: false, source: 'custom' },
-  { id: 'x', name: 'X', color: '#9b59ff', top: 0.05, right: 0.05, bottom: 0.05, left: 0.05, visible: false, source: 'custom' },
-  { id: 'uxpub', name: 'UXPUB', color: '#00c27a', top: 0.05, right: 0.05, bottom: 0.05, left: 0.05, visible: false, source: 'custom' },
+  mk('linkedin', 'LinkedIn', '#0a8bff'),
+  mk('x', 'X', '#b266ff'),
+  mk('uxpub', 'UXPUB', '#00d08a'),
+  mk('medium', 'Medium', '#ffb000'),
+  { id: 'instagram', name: 'Instagram Reels / Stories', color: '#ff3b8d', top: 0.14, right: 0.06, bottom: 0.35, left: 0.06, visible: false, source: 'unverified',
+    note: 'Figures come from third-party guides that cite Meta (14% top, 35% bottom, 6% sides). Not confirmed on an official Meta page.' },
 ];
 
 export function newProject(preset: keyof typeof CANVAS_PRESETS = '1:1'): Project {
   return {
     version: 1,
+    name: 'Untitled project',
     canvas: { ...CANVAS_PRESETS[preset], preset, background: '#000000', safeZones: structuredClone(DEFAULT_SAFE_ZONES) },
     frames: [],
     defaults: structuredClone(DEFAULTS),

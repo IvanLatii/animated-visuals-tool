@@ -62,6 +62,8 @@ export interface SafeZone {
   visible: boolean;
   /** unverified — цифри зі сторонніх джерел; custom — відступи задає сам користувач. */
   source: 'unverified' | 'custom';
+  /** Звідки цифри: показується в редагуванні зони. */
+  note?: string;
 }
 
 export interface Project {
