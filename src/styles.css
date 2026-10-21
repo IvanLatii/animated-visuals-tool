@@ -50,7 +50,16 @@ progress::-webkit-progress-bar { background: var(--line); }
 progress::-webkit-progress-value { background: var(--accent); }
 
 /* --- Каркас --- */
-.app { height: 100%; display: grid; grid-template-columns: clamp(170px, 17vw, 220px) minmax(0, 1fr) clamp(240px, 22vw, 300px); grid-template-rows: 32px minmax(0, 1fr) 92px; gap: 1px; background: var(--line); }
+.app { height: 100%; display: grid; grid-template-columns: var(--lw) 1px minmax(0, 1fr) 1px var(--rw); grid-template-rows: 32px minmax(0, 1fr); background: var(--line); }
+.topbar { border-bottom: 1px solid var(--line); }
+.center { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--panel); }
+.resizer { position: relative; background: var(--line); z-index: 3; }
+.resizer::after { content: ""; position: absolute; }
+.resizer.x { cursor: col-resize; }
+.resizer.x::after { inset: 0 -3px; }
+.resizer.y { cursor: row-resize; height: 1px; flex: none; }
+.resizer.y::after { inset: -3px 0; }
+.resizer:hover, .resizer:active { background: var(--accent); }
 .app.dropping { outline: 2px dashed var(--accent); outline-offset: -4px; }
 .topbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: var(--panel); }
 .brand { font: 600 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
@@ -71,9 +80,10 @@ progress::-webkit-progress-value { background: var(--accent); }
 .frame .icon { padding: 0 6px; line-height: 18px; border: none; background: none; font-size: 13px; letter-spacing: 0; }
 
 /* --- Прев'ю --- */
-.preview { display: flex; flex-direction: column; background: var(--stage); }
-.stage { container-type: size; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; padding: 44px 48px; }
-.canvas-wrap { position: relative; aspect-ratio: var(--ar); width: min(100cqw, calc(100cqh * var(--ar))); }
+.preview { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--stage); }
+.stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; touch-action: none; }
+.stage.panning { cursor: grabbing; }
+.canvas-wrap { position: relative; flex: none; }
 .canvas-wrap canvas { display: block; width: 100%; height: 100%; background: #000; }
 .marks i { position: absolute; width: 14px; height: 14px; border: 0 solid var(--muted); pointer-events: none; }
 .marks i:nth-child(1) { left: -14px; top: -14px; border-right-width: 1px; border-bottom-width: 1px; }
@@ -86,14 +96,14 @@ progress::-webkit-progress-value { background: var(--accent); }
 .safe-zone { position: absolute; border: 1px dashed #ffd400; pointer-events: none; }
 .safe-zone span { position: absolute; left: 6px; top: -1px; transform: translateY(-50%); background: #000; color: #ffd400; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; padding: 1px 4px; }
 .stage .empty { position: absolute; color: var(--muted); }
-.transport { display: flex; align-items: center; gap: 14px; padding: 8px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+.transport { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--panel); border-top: 1px solid var(--line); }
 .transport .time { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); }
 .chk { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
 
 /* --- Таймлайн --- */
-.timeline { grid-column: 1 / -1; padding: 10px 12px; display: flex; align-items: center; }
+.timeline { height: var(--th); flex: none; padding: 12px 16px; display: flex; align-items: center; }
 .timeline .hint { margin: auto; }
-.bar { position: relative; display: flex; gap: 1px; width: 100%; height: 64px; touch-action: none; cursor: pointer; user-select: none; }
+.bar { position: relative; display: flex; gap: 1px; width: 100%; height: 100%; max-height: 120px; touch-action: none; cursor: pointer; user-select: none; }
 .seg-t { flex-basis: 0; min-width: 0; background-size: cover; background-position: center; border: 1px solid var(--line-strong); position: relative; overflow: hidden; }
 .seg-t.selected { border-color: var(--ink); outline: 1px solid var(--ink); outline-offset: -2px; }
 .seg-t span { position: absolute; left: 0; bottom: 0; font-size: 9px; background: var(--ink); color: var(--on-ink); padding: 1px 4px; }
@@ -140,3 +150,23 @@ progress::-webkit-progress-value { background: var(--accent); }
 
 .toast { position: fixed; bottom: 108px; left: 50%; transform: translateX(-50%); background: var(--danger); color: #fff; padding: 8px 12px; cursor: pointer; }
 .topbar .seg button { flex: none; padding: 4px 8px; white-space: nowrap; }
+
+/* --- Ітерація 2: масштаб, кнопка Грати, відступи --- */
+.zoombar { position: absolute; top: 10px; right: 10px; display: flex; border: 1px solid var(--line-strong); background: var(--panel); z-index: 2; }
+.zoombar button { border: none; border-right: 1px solid var(--line-strong); padding: 5px 8px; font-size: 9px; background: none; }
+.zoombar button:last-child { border-right: none; }
+.zoombar .pct { min-width: 44px; letter-spacing: 0; }
+button.play { min-width: 112px; height: 32px; padding: 0 16px; background: var(--ink); color: var(--on-ink); border-color: var(--ink); font-size: 10px; }
+.hintkeys { color: var(--muted); font-size: 9px; letter-spacing: .04em; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.transport .time { margin-left: 0; }
+
+/* дрібніший текст у табах і перемикачах, більше повітря між блоками */
+.tabs button { font-size: 9px; padding: 11px 4px 9px; }
+.seg button { font-size: 9px; padding: 6px 4px; letter-spacing: .04em; }
+.group { border-top: none; padding-top: 0; margin-top: 12px; gap: 10px; }
+.grp { margin-bottom: 2px; }
+.sec-toggle { padding: 16px 16px 10px; }
+.sec-body { gap: 12px; padding: 2px 16px 20px; }
+.panel { padding: 16px; gap: 12px; }
+.pad { padding: 14px 16px; }
+.frames ol { gap: 8px; }

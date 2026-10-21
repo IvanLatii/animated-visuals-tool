@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { fileToDataUrl, loadImage } from './assets';
 import { Sidebar } from './components/Sidebar';
 import { FrameList } from './components/FrameList';
 import { Preview } from './components/Preview';
+import { Resizer } from './components/Resizer';
 import { Seg } from './components/ui';
+import { DEFAULT_LAYOUT, LIMITS, loadLayout, saveLayout, type Layout } from './layout';
 import { Timeline } from './components/Timeline';
 import { applyTheme, loadTheme, type Theme } from './theme';
 import { newProject } from './model/defaults';
@@ -24,6 +26,7 @@ export function App() {
   const [dropping, setDropping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(loadTheme);
+  const [layout, setLayout] = useState<Layout>(loadLayout);
   const tRef = useRef(0);
 
   const duration = projectDuration(project);
@@ -77,6 +80,7 @@ export function App() {
   }, [duration, playing, seek]);
 
   useEffect(() => { applyTheme(theme); }, [theme]);
+  useEffect(() => { saveLayout(layout); }, [layout]);
 
   // Space = play/pause, але не коли Іван друкує в полі.
   useEffect(() => {
@@ -95,6 +99,7 @@ export function App() {
 
   return (
     <div className={`app ${dropping ? 'dropping' : ''}`}
+      style={{ '--lw': `${layout.left}px`, '--rw': `${layout.right}px`, '--th': `${layout.timeline}px` } as CSSProperties}
       onDragOver={(e) => { if (hasFiles(e)) { e.preventDefault(); setDropping(true); } }}
       onDragLeave={(e) => { if (e.currentTarget === e.target) setDropping(false); }}
       onDrop={(e) => { if (hasFiles(e)) { e.preventDefault(); setDropping(false); void addFiles(e.dataTransfer.files); } }}>
@@ -110,11 +115,19 @@ export function App() {
         onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelectedId((s) => (s === id ? null : s)); }}
         onMove={(from, to) => setProject((p) => moveFrame(p, from, to))}
         onPickFiles={(files) => void addFiles(files)} />
-      <Preview project={project} assets={assets} t={t} showSafe={showSafe} playing={playing} loop={loop} duration={duration}
-        onTogglePlay={togglePlay} onToggleLoop={setLoop} />
+      <Resizer axis="x" label="Ширина лівої панелі" value={layout.left} min={LIMITS.left[0]} max={LIMITS.left[1]}
+        onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
+      <div className="center">
+        <Preview project={project} assets={assets} t={t} showSafe={showSafe} playing={playing} loop={loop} duration={duration}
+          onTogglePlay={togglePlay} onToggleLoop={setLoop} />
+        <Resizer axis="y" invert label="Висота таймлайну" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
+          onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
+        <Timeline project={project} t={t} selectedId={selectedId} onSeek={seek} onSelect={setSelectedId} />
+      </div>
+      <Resizer axis="x" invert label="Ширина правої панелі" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
+        onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
       <Sidebar project={project} assets={assets} selectedId={selectedId} duration={duration}
         showSafe={showSafe} onShowSafe={setShowSafe} onChange={(fn: (p: Project) => Project) => setProject(fn)} />
-      <Timeline project={project} t={t} selectedId={selectedId} onSeek={seek} onSelect={setSelectedId} />
       {error && <div className="toast" role="alert" onClick={() => setError(null)}>{error}</div>}
     </div>
   );
