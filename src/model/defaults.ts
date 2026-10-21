@@ -1,4 +1,4 @@
-import type { Defaults, Easing, Frame, Layer, Motion, Project, Transition } from './types';
+import type { Defaults, Easing, Frame, Layer, Motion, Project, SafeZone, Transition } from './types';
 
 export const CANVAS_PRESETS = {
   '1:1': { w: 1080, h: 1080 },
@@ -25,10 +25,22 @@ export function imageLayer(src: string): Layer {
   return { type: 'image', src, x: 0, y: 0, w: 1, h: 1 };
 }
 
+/**
+ * Стартові safe-зони. Офіційних цифр знайшли лише для Instagram (і то в сторонніх джерелах, що цитують Meta:
+ * зверху 14%, знизу 35%, з боків по 6% для Reels і Stories — 🟡 не підтверджено). Для LinkedIn, X і UXPUB
+ * офіційних safe-зон не опубліковано, тому там стоїть умовні 5%, які користувач змінює сам.
+ */
+export const DEFAULT_SAFE_ZONES: SafeZone[] = [
+  { id: 'instagram', name: 'Instagram Reels / Stories', color: '#ff3b8d', top: 0.14, right: 0.06, bottom: 0.35, left: 0.06, visible: false, source: 'unverified' },
+  { id: 'linkedin', name: 'LinkedIn', color: '#0a8bff', top: 0.05, right: 0.05, bottom: 0.05, left: 0.05, visible: false, source: 'custom' },
+  { id: 'x', name: 'X', color: '#9b59ff', top: 0.05, right: 0.05, bottom: 0.05, left: 0.05, visible: false, source: 'custom' },
+  { id: 'uxpub', name: 'UXPUB', color: '#00c27a', top: 0.05, right: 0.05, bottom: 0.05, left: 0.05, visible: false, source: 'custom' },
+];
+
 export function newProject(preset: keyof typeof CANVAS_PRESETS = '1:1'): Project {
   return {
     version: 1,
-    canvas: { ...CANVAS_PRESETS[preset], preset, background: '#000000' },
+    canvas: { ...CANVAS_PRESETS[preset], preset, background: '#000000', safeZones: structuredClone(DEFAULT_SAFE_ZONES) },
     frames: [],
     defaults: structuredClone(DEFAULTS),
   };

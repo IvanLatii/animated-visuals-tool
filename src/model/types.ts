@@ -53,7 +53,16 @@ export interface Defaults {
   transitionOut: Transition;
 }
 
-export interface SafeZone { top: number; right: number; bottom: number; left: number } // 0–1
+/** Відступи від країв у частках полотна (0–1). Зон може бути кілька, кожну видно або приховано окремо. */
+export interface SafeZone {
+  id: string;
+  name: string;
+  color: string;
+  top: number; right: number; bottom: number; left: number;
+  visible: boolean;
+  /** unverified — цифри зі сторонніх джерел; custom — відступи задає сам користувач. */
+  source: 'unverified' | 'custom';
+}
 
 export interface Project {
   version: 1;
@@ -63,7 +72,7 @@ export interface Project {
     w: number; h: number;
     preset: '1:1' | '4:5' | '16:9' | '9:16' | 'custom';
     background: string;
-    safeZone?: SafeZone;
+    safeZones: SafeZone[];
   };
   frames: Frame[];
   defaults: Defaults;
@@ -71,7 +80,7 @@ export interface Project {
 
 // Налаштування експорту. Експорт іде циклом по списку таких завдань.
 export interface ExportJob {
-  format: 'gif' | 'mp4';
+  format: 'gif' | 'mp4' | 'png';
   fps: number;
   /** Множник розміру полотна: 1 = як у проєкті, 0.5 = вдвічі менше. */
   scale: number;

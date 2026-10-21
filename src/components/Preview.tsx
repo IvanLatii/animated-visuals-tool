@@ -6,7 +6,6 @@ interface Props {
   project: Project;
   assets: Assets;
   t: number;
-  showSafe: boolean;
   playing: boolean;
   loop: boolean;
   duration: number;
@@ -19,7 +18,7 @@ const MIN_SCALE = 0.05, MAX_SCALE = 8;
 
 interface View { zoom: number; x: number; y: number } // zoom = множник відносно «вмістити», x/y — зсув у пікселях екрана
 
-export function Preview({ project, assets, t, showSafe, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
@@ -27,7 +26,12 @@ export function Preview({ project, assets, t, showSafe, playing, loop, duration,
   const [view, setView] = useState<View>({ zoom: 1, x: 0, y: 0 });
   const [panning, setPanning] = useState(false);
   const { w, h } = project.canvas;
-  const safe = project.canvas.safeZone ?? { top: 0.05, right: 0.05, bottom: 0.05, left: 0.05 };
+  const visibleZones = project.canvas.safeZones.filter((z) => z.visible);
+  // Спільна область: найсуворіший відступ кожного боку з показаних зон.
+  const combined = visibleZones.length > 1 ? {
+    top: Math.max(...visibleZones.map((z) => z.top)), right: Math.max(...visibleZones.map((z) => z.right)),
+    bottom: Math.max(...visibleZones.map((z) => z.bottom)), left: Math.max(...visibleZones.map((z) => z.left)),
+  } : null;
 
   // Масштаб, при якому артборд повністю вміщується (пікселів екрана на піксель полотна).
   const fit = box.w > 0 ? Math.max(0.01, Math.min((box.w - 2 * PAD_X) / w, (box.h - 2 * PAD_Y) / h)) : 1;
@@ -117,9 +121,14 @@ export function Preview({ project, assets, t, showSafe, playing, loop, duration,
           <div className="marks" aria-hidden><i /><i /><i /><i /></div>
           <span className="cap top">Scene · {duration.toFixed(1)} s</span>
           <canvas ref={canvasRef} width={w} height={h} />
-          {showSafe && (
-            <div className="safe-zone" style={{ inset: `${safe.top * 100}% ${safe.right * 100}% ${safe.bottom * 100}% ${safe.left * 100}%` }}>
-              <span>Safe zone</span>
+          {visibleZones.map((z) => (
+            <div key={z.id} className="safe-zone" style={{ inset: `${z.top * 100}% ${z.right * 100}% ${z.bottom * 100}% ${z.left * 100}%`, '--zc': z.color } as CSSProperties}>
+              <span>{z.name}</span>
+            </div>
+          ))}
+          {combined && (
+            <div className="safe-zone combined" style={{ inset: `${combined.top * 100}% ${combined.right * 100}% ${combined.bottom * 100}% ${combined.left * 100}%`, '--zc': '#ffd400' } as CSSProperties}>
+              <span>Combined</span>
             </div>
           )}
           <span className="cap bottom">{presetLabel} · {w}×{h} · {pct}%</span>

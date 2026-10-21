@@ -8,6 +8,8 @@ const MAX_FRAME_BYTES = 1.5e9;
 
 export interface ExportOptions {
   signal?: AbortSignal;
+  /** Момент сцени (с) для PNG — де зараз стоїть перемотування. */
+  time?: number;
   onStatus?: (text: string, progress: number | null) => void;
 }
 

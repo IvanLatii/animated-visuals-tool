@@ -1,6 +1,6 @@
 import { CANVAS_PRESETS, imageLayer } from '../model/defaults';
 import type { MotionProfile } from '../model/profiles';
-import type { Frame, Motion, Project, Transition } from '../model/types';
+import type { Frame, Motion, Project, SafeZone, Transition } from '../model/types';
 
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
 
@@ -69,9 +69,18 @@ export function setBackground(project: Project, color: string): Project {
   return { ...project, canvas: { ...project.canvas, background: color } };
 }
 
-/** inset — відступ з усіх боків у частках полотна (0.05 = 5%). */
-export function setSafeInset(project: Project, inset: number): Project {
-  return { ...project, canvas: { ...project.canvas, safeZone: { top: inset, right: inset, bottom: inset, left: inset } } };
+// --- Safe-зони ---
+export function updateSafeZone(project: Project, id: string, patch: Partial<SafeZone>): Project {
+  return { ...project, canvas: { ...project.canvas, safeZones: project.canvas.safeZones.map((z) => (z.id === id ? { ...z, ...patch } : z)) } };
+}
+
+export function addSafeZone(project: Project): Project {
+  const zone: SafeZone = { id: crypto.randomUUID(), name: 'Custom zone', color: '#ffb000', top: 0.05, right: 0.05, bottom: 0.05, left: 0.05, visible: true, source: 'custom' };
+  return { ...project, canvas: { ...project.canvas, safeZones: [...project.canvas.safeZones, zone] } };
+}
+
+export function removeSafeZone(project: Project, id: string): Project {
+  return { ...project, canvas: { ...project.canvas, safeZones: project.canvas.safeZones.filter((z) => z.id !== id) } };
 }
 
 // --- Значення за замовчуванням і перевизначення на рівні кадру ---

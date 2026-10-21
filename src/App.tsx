@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { fileToDataUrl, loadImage } from './assets';
 import { ExportPanel } from './components/ExportPanel';
-import { Modal } from './components/Modal';
 import { Sidebar } from './components/Sidebar';
 import { FrameList } from './components/FrameList';
 import { Preview } from './components/Preview';
@@ -10,9 +9,11 @@ import { Seg } from './components/ui';
 import { DEFAULT_LAYOUT, LIMITS, loadLayout, saveLayout, type Layout } from './layout';
 import { Timeline } from './components/Timeline';
 import { applyTheme, loadTheme, type Theme } from './theme';
+import { DEFAULT_SETTINGS, type ExportSettings } from './export/presets';
 import { newProject } from './model/defaults';
 import type { Project } from './model/types';
 import { parseProject, projectFileName, serializeProject } from './model/projectFile';
+import { canPick, downloadText, isAbort, pickOpenHandle, pickSaveHandle, writeHandle, type FileHandle } from './projectIO';
 import { buildTimeline, loadAssets, projectDuration, type Assets } from './render/renderScene';
 import { addFrames, moveFrame, newFrame, removeFrame, replaceFrameImage, setFrameDuration, setProjectName } from './state/projectActions';
 
@@ -29,12 +30,13 @@ export function App() {
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(true);
-  const [showSafe, setShowSafe] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportSettings, setExportSettings] = useState<ExportSettings>(DEFAULT_SETTINGS);
   const openRef = useRef<HTMLInputElement>(null);
+  const fileHandle = useRef<FileHandle | null>(null); // файл, у який ⌘S зберігає мовчки
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const tRef = useRef(0);
@@ -79,19 +81,33 @@ export function App() {
     }
   }, []);
 
-  const saveProject = useCallback(() => {
-    const url = URL.createObjectURL(new Blob([serializeProject(project)], { type: 'application/json' }));
-    const name = projectFileName(project);
-    const a = document.createElement('a');
-    a.href = url; a.download = name; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setNotice(`Saved ${name}`);
+  const flash = useCallback((text: string) => {
+    setNotice(text);
     setTimeout(() => setNotice(null), 2500);
-  }, [project]);
+  }, []);
 
-  const openProject = useCallback(async (file: File) => {
+  /** Перше збереження (і «Save as») питає місце й ім'я, далі ⌘S мовчки перезаписує той самий файл. */
+  const saveProject = useCallback(async (asNew = false) => {
+    const text = serializeProject(project);
+    try {
+      if (!canPick) { downloadText(text, projectFileName(project)); flash(`Downloaded ${projectFileName(project)}`); return; }
+      let handle = fileHandle.current;
+      if (!handle || asNew) {
+        handle = await pickSaveHandle(projectFileName(project));
+        if (!handle) return; // скасував
+        fileHandle.current = handle;
+      }
+      await writeHandle(handle, text);
+      flash(`Saved ${handle.name}`);
+    } catch (e) {
+      if (!isAbort(e)) setError(`Could not save: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [project, flash]);
+
+  const openProject = useCallback(async (file: File, handle: FileHandle | null = null) => {
     try {
       const parsed = parseProject(await file.text());
+      fileHandle.current = handle;
       const loaded = await loadAssets(parsed);
       setAssets(loaded);
       setProject(parsed);
@@ -103,6 +119,16 @@ export function App() {
       setError(`Could not open the project: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, [seek]);
+
+  const requestOpen = useCallback(async () => {
+    if (!canPick) { openRef.current?.click(); return; }
+    try {
+      const handle = await pickOpenHandle();
+      if (handle) await openProject(await handle.getFile(), handle);
+    } catch (e) {
+      if (!isAbort(e)) setError(`Could not open: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [openProject]);
 
   // Програвання: рахуємо час від кадру до кадру. Позицію тримаємо в ref, щоб цикл не перестворювався щокадру.
   useEffect(() => {
@@ -141,9 +167,10 @@ export function App() {
       seek(next.start);
     };
     const onDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 's' || e.key === 'o')) {
+      const key = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (key === 's' || key === 'o')) {
         e.preventDefault();
-        if (e.key === 's') saveProject(); else openRef.current?.click();
+        if (key === 's') void saveProject(e.shiftKey); else void requestOpen();
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey || exportOpen) return;
@@ -160,7 +187,7 @@ export function App() {
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-  }, [togglePlay, saveProject, project, selectedId, seek, exportOpen]);
+  }, [togglePlay, saveProject, requestOpen, project, selectedId, seek, exportOpen]);
 
   return (
     <div className={`app ${dropping ? 'dropping' : ''}`}
@@ -177,8 +204,9 @@ export function App() {
       <header className="topbar">
         <input className="name" value={project.name ?? ''} placeholder="Untitled" aria-label="Project name" maxLength={60}
           onChange={(e) => setProject((p) => setProjectName(p, e.target.value))} />
-        <button data-tip="Open project · ⌘ O" onClick={() => openRef.current?.click()}>Open</button>
-        <button data-tip="Save project · ⌘ S" onClick={saveProject}>Save</button>
+        <button data-tip="Open project · ⌘ O" onClick={() => void requestOpen()}>Open</button>
+        <button data-tip="Save · ⌘ S" onClick={() => void saveProject()}>Save</button>
+        <button data-tip="Save as… · ⌘ ⇧ S" onClick={() => void saveProject(true)}>Save as</button>
         <input ref={openRef} type="file" accept=".json,application/json" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void openProject(f); e.target.value = ''; }} />
         <Seg label="Theme" value={theme} onChange={setTheme} options={[
@@ -196,7 +224,7 @@ export function App() {
       <Resizer axis="x" label="Left panel width" value={layout.left} min={LIMITS.left[0]} max={LIMITS.left[1]}
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">
-        <Preview project={project} assets={assets} t={t} showSafe={showSafe} playing={playing} loop={loop} duration={duration}
+        <Preview project={project} assets={assets} t={t} playing={playing} loop={loop} duration={duration}
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
@@ -206,10 +234,10 @@ export function App() {
       <Resizer axis="x" invert label="Right panel width" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
       <Sidebar project={project} selectedId={selectedId} duration={duration}
-        showSafe={showSafe} onShowSafe={setShowSafe} onChange={(fn: (p: Project) => Project) => setProject(fn)} />
-      <Modal open={exportOpen} title="Export" onClose={() => setExportOpen(false)}>
-        <ExportPanel project={project} assets={assets} />
-      </Modal>
+        exportSettings={exportSettings} onExportSettings={setExportSettings}
+        onChange={(fn: (p: Project) => Project) => setProject(fn)} />
+      <ExportPanel project={project} assets={assets} t={t} settings={exportSettings} onSettings={setExportSettings}
+        open={exportOpen} onClose={() => setExportOpen(false)} />
       {error && <div className="toast error" role="alert" onClick={() => setError(null)}>{error}</div>}
       {!error && notice && <div className="toast" role="status">{notice}</div>}
     </div>

@@ -4,7 +4,7 @@ import { exportSize } from './renderFrames';
 export type QualityMode = 'max' | 'balanced' | 'small' | 'custom';
 
 export interface ExportSettings {
-  format: 'mp4' | 'gif';
+  format: 'mp4' | 'gif' | 'png';
   fps: number;
   mode: QualityMode;
   scale: number;
@@ -23,6 +23,7 @@ export const GIF_MIN_QUALITY = 80;
 
 export function toJob(project: Project, s: ExportSettings): ExportJob {
   const { w, h } = exportSize(project, s.scale);
+  if (s.format === 'png') return { format: 'png', fps: s.fps, scale: s.scale };
   if (s.format === 'mp4') {
     const bitrate = s.mode === 'custom' ? s.mp4Mbps * 1e6 : w * h * s.fps * MP4_BPP[s.mode];
     return { format: 'mp4', fps: s.fps, scale: s.scale, mp4: { bitrate } };

@@ -1,22 +1,18 @@
 import { useState } from 'react';
 import type { Project } from '../model/types';
-import { CheckRow, NumberField, Row, Seg, SliderRow } from './ui';
+import { NumberField, Row, Seg } from './ui';
 
 type Preset = Project['canvas']['preset'];
 
 interface Props {
   project: Project;
-  showSafe: boolean;
-  onShowSafe: (v: boolean) => void;
   onPreset: (p: Preset) => void;
   onSize: (w: number, h: number) => void;
   onBackground: (c: string) => void;
-  onSafeInset: (v: number) => void;
 }
 
-export function CanvasControls({ project, showSafe, onShowSafe, onPreset, onSize, onBackground, onSafeInset }: Props) {
-  const { w, h, preset, background, safeZone } = project.canvas;
-  const inset = safeZone?.top ?? 0.05;
+export function CanvasControls({ project, onPreset, onSize, onBackground }: Props) {
+  const { w, h, preset, background } = project.canvas;
   // Ширину й висоту редагуємо як текст, поки не набрано коректне число.
   const [draft, setDraft] = useState<string>(background);
   return (
@@ -35,8 +31,6 @@ export function CanvasControls({ project, showSafe, onShowSafe, onPreset, onSize
           onChange={(e) => { setDraft(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onBackground(e.target.value.toLowerCase()); }}
           onBlur={() => setDraft(background)} />
       </Row>
-      <CheckRow label="Safe zone" checked={showSafe} onChange={onShowSafe} />
-      {showSafe && <SliderRow label="Inset, %" value={inset} min={0} max={0.2} step={0.01} scale={100} onChange={onSafeInset} />}
     </>
   );
 }
