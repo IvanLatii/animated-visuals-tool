@@ -1,4 +1,5 @@
 import { CANVAS_PRESETS, imageLayer } from '../model/defaults';
+import type { MotionProfile } from '../model/profiles';
 import type { Frame, Motion, Project, Transition } from '../model/types';
 
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
@@ -113,4 +114,14 @@ export function setFrameFit(project: Project, id: string, fit: 'fit' | 'fill' | 
 
 function mapFrame(project: Project, id: string, fn: (f: Frame) => Frame): Project {
   return { ...project, frames: project.frames.map((f) => (f.id === id ? fn(f) : f)) };
+}
+
+/** Профіль на весь проєкт. Один крок — стає значенням за замовчуванням (перевизначення кадрів зникають), кілька — розкладаються по кадрах. */
+export function applyMotionProfile(project: Project, profile: MotionProfile): Project {
+  const defaults = { ...project.defaults, motion: { ...profile.steps[0] } };
+  const frames = project.frames.map((f, i) => {
+    const { motion: _old, ...rest } = f; void _old;
+    return profile.steps.length === 1 ? rest : { ...rest, motion: { ...profile.steps[i % profile.steps.length] } };
+  });
+  return { ...project, defaults, frames };
 }

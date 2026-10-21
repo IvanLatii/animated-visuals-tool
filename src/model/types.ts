@@ -8,7 +8,10 @@ export interface Easing {
   strength: number;
 }
 
-export type MotionType = 'none' | 'zoom-in' | 'zoom-out';
+export type MotionType =
+  | 'none' | 'zoom-in' | 'zoom-out'
+  | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' // картинка їде в названий бік
+  | 'tilt-cw' | 'tilt-ccw'; // легкий нахил за / проти годинникової стрілки
 export interface Motion {
   type: MotionType;
   /** На скільки змінюється масштаб: 0.2 = на 20%. */

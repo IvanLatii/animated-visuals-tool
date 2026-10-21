@@ -4,6 +4,8 @@ import { SelectRow, SliderRow } from './ui';
 
 const MOTIONS: { id: MotionType; label: string }[] = [
   { id: 'none', label: 'None' }, { id: 'zoom-in', label: 'Zoom in' }, { id: 'zoom-out', label: 'Zoom out' },
+  { id: 'pan-left', label: 'Pan left' }, { id: 'pan-right', label: 'Pan right' }, { id: 'pan-up', label: 'Pan up' }, { id: 'pan-down', label: 'Pan down' },
+  { id: 'tilt-cw', label: 'Tilt clockwise' }, { id: 'tilt-ccw', label: 'Tilt counter-cw' },
 ];
 const TRANSITIONS: { id: TransitionType; label: string }[] = [
   { id: 'cut', label: 'Cut' }, { id: 'crossfade', label: 'Crossfade' }, { id: 'wipe-up', label: 'Wipe up' },

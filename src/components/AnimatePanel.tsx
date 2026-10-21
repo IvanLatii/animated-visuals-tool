@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { resolveFrame } from '../model/defaults';
 import type { Project } from '../model/types';
 import * as A from '../state/projectActions';
+import { MOTION_PROFILES } from '../model/profiles';
 import { MotionControls, TransitionControls } from './AnimationControls';
 import { FitControls } from './FitControls';
-import { Row, Section, Seg, SliderRow } from './ui';
+import { Row, Section, SelectRow, Seg, SliderRow } from './ui';
 
 interface Props {
   project: Project;
@@ -53,6 +54,8 @@ export function AnimatePanel({ project, selectedId, duration, onChange }: Props)
             <SliderRow label="Frame duration, s" value={project.defaults.frameDuration} min={0.1} max={10} step={0.1} decimals={1}
               onChange={(v) => onChange((pr) => A.setDefaultFrameDuration(pr, v))} />
             <FitControls value={project.defaults.layerFit} overridden={false} onChange={(v) => onChange((pr) => A.setDefaultFit(pr, v))} />
+            <SelectRow label="Motion profile" value="" onChange={(id) => { const p = MOTION_PROFILES.find((x) => x.id === id); if (p) onChange((pr) => A.applyMotionProfile(pr, p)); }}
+              options={[{ id: '', label: 'Apply…' }, ...MOTION_PROFILES.map((p) => ({ id: p.id, label: p.label }))]} />
             <MotionControls value={project.defaults.motion} overridden={false} onChange={(patch) => onChange((pr) => A.setDefaultMotion(pr, patch))} />
             <TransitionControls value={project.defaults.transitionOut} overridden={false} onChange={(patch) => onChange((pr) => A.setDefaultTransition(pr, patch))} />
           </>

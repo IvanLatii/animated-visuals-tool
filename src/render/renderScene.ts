@@ -58,9 +58,10 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fi
 
 function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets) {
   const { width: W, height: H } = ctx.canvas;
-  const tr = motions[rf.motion.type](rf.motion, progress);
+  const tr = motions[rf.motion.type](rf.motion, progress, { w: W, h: H });
   ctx.save();
   ctx.translate(W / 2 + tr.dx * W, H / 2 + tr.dy * H);
+  ctx.rotate(tr.rotate);
   ctx.scale(tr.scale, tr.scale);
   ctx.translate(-W / 2, -H / 2);
   for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets);
