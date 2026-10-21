@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { fileToDataUrl, loadImage } from './assets';
+import { ExportPanel } from './components/ExportPanel';
 import { FrameList } from './components/FrameList';
 import { Preview } from './components/Preview';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -84,8 +85,11 @@ export function App() {
         onPickFiles={(files) => void addFiles(files)} />
       <Preview project={project} assets={assets} t={t} showSafe={showSafe} playing={playing} loop={loop} duration={duration}
         onTogglePlay={togglePlay} onToggleLoop={setLoop} />
-      <SettingsPanel project={project} selectedId={selectedId} duration={duration}
-        showSafe={showSafe} onShowSafe={setShowSafe} onChange={(fn) => setProject(fn)} />
+      <div className="side">
+        <SettingsPanel project={project} selectedId={selectedId} duration={duration}
+          showSafe={showSafe} onShowSafe={setShowSafe} onChange={(fn) => setProject(fn)} />
+        <ExportPanel project={project} assets={assets} />
+      </div>
       <Timeline project={project} t={t} selectedId={selectedId} onSeek={seek} onSelect={setSelectedId} />
       {error && <div className="toast" role="alert" onClick={() => setError(null)}>{error}</div>}
     </div>

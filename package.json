@@ -22,6 +22,7 @@
   "private": true,
   "dependencies": {
     "gif.js": "^0.2.0",
+    "gifski-wasm": "^2.2.0",
     "mediabunny": "^1.62.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

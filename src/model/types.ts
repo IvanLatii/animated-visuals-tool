@@ -67,9 +67,11 @@ export interface Project {
 // Налаштування експорту. Експорт іде циклом по списку таких завдань.
 export interface ExportJob {
   format: 'gif' | 'mp4';
-  fps: 24 | 30 | 60;
-  /** Лише GIF */
-  gif?: { dither: false | 'FloydSteinberg' | 'Atkinson' | 'Stucki'; quality: number };
-  /** Лише MP4, біт/с */
+  fps: number;
+  /** Множник розміру полотна: 1 = як у проєкті, 0.5 = вдвічі менше. */
+  scale: number;
+  /** Лише GIF: якість gifski, 1–100 */
+  gif?: { quality: number };
+  /** Лише MP4: біт/с */
   mp4?: { bitrate: number };
 }
