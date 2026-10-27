@@ -21,7 +21,7 @@ export const transitions: Record<TransitionType, TransitionFn> = {
   crossfade: (ctx, p, drawPrev, drawNext) => {
     drawPrev();
     ctx.save();
-    ctx.globalAlpha = p;
+    ctx.globalAlpha = clamp01(p); // з кривими Back/Elastic p виходить за 1, а прозорість — ні
     drawNext();
     ctx.restore();
   },
@@ -90,7 +90,7 @@ export const transitions: Record<TransitionType, TransitionFn> = {
     };
     scaled(1 + 0.12 * p, drawPrev);
     ctx.save();
-    ctx.globalAlpha = p;
+    ctx.globalAlpha = clamp01(p);
     scaled(1 + 0.12 * (1 - p), drawNext);
     ctx.restore();
   },
@@ -99,12 +99,12 @@ export const transitions: Record<TransitionType, TransitionFn> = {
   'blur-dissolve': (ctx, p, drawPrev, drawNext, { w }) => {
     const px = (w / 1080) * 28;
     ctx.save();
-    ctx.filter = `blur(${(px * p).toFixed(2)}px)`;
+    ctx.filter = `blur(${(px * clamp01(p)).toFixed(2)}px)`;
     drawPrev();
     ctx.restore();
     ctx.save();
-    ctx.globalAlpha = p;
-    ctx.filter = `blur(${(px * (1 - p)).toFixed(2)}px)`;
+    ctx.globalAlpha = clamp01(p);
+    ctx.filter = `blur(${(px * (1 - clamp01(p))).toFixed(2)}px)`;
     drawNext();
     ctx.restore();
   },

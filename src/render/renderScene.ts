@@ -66,6 +66,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault:
   ctx.rotate(tr.rotate);
   ctx.scale(tr.scale, tr.scale);
   ctx.translate(-W / 2, -H / 2);
+  if (tr.blur) ctx.filter = `blur(${(tr.blur * W).toFixed(2)}px)`;
   for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets, size);
   ctx.restore();
 }

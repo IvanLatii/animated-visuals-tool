@@ -11,12 +11,23 @@ const ICONS: Record<MotionType, string> = {
   'pan-down': 'M10 4v12M6 12l4 4 4-4',
   'tilt-cw': 'M15 10a5 5 0 1 1-1.5-3.6M15 4v3.5h-3.5',
   'tilt-ccw': 'M5 10a5 5 0 1 0 1.5-3.6M5 4v3.5h3.5',
+  'drift-ul': 'M15 15L5 5M5 11V5h6',
+  'drift-ur': 'M5 15L15 5M9 5h6v6',
+  'drift-dl': 'M15 5L5 15M5 9v6h6',
+  'drift-dr': 'M5 5l10 10M15 9v6H9',
+  float: 'M3 11c2-5 4-5 6 0s4 5 6 0 2-3 2-3',
+  pop: 'M6.5 10a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2',
+  focus: 'M10 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8M10 2v3M10 15v3M2 10h3M15 10h3',
+  handheld: 'M2.5 10l2-3 2 5 2-6 2 7 2-5 2 4 2-2',
 };
 const LABELS: Record<MotionType, string> = {
   none: 'None', breathe: 'Breathe', 'zoom-in': 'Zoom in', 'zoom-out': 'Zoom out', 'pan-left': 'Pan left', 'pan-right': 'Pan right',
   'pan-up': 'Pan up', 'pan-down': 'Pan down', 'tilt-cw': 'Tilt cw', 'tilt-ccw': 'Tilt ccw',
+  'drift-ul': 'Drift ↖', 'drift-ur': 'Drift ↗', 'drift-dl': 'Drift ↙', 'drift-dr': 'Drift ↘',
+  float: 'Float', pop: 'Pop in', focus: 'Focus in', handheld: 'Handheld',
 };
-const ORDER: MotionType[] = ['none', 'zoom-in', 'zoom-out', 'breathe', 'pan-left', 'pan-right', 'pan-up', 'pan-down', 'tilt-cw', 'tilt-ccw'];
+const ORDER: MotionType[] = ['none', 'zoom-in', 'zoom-out', 'breathe', 'pan-left', 'pan-right', 'pan-up', 'pan-down', 'tilt-cw', 'tilt-ccw',
+  'drift-ul', 'drift-ur', 'drift-dl', 'drift-dr', 'float', 'pop', 'focus', 'handheld'];
 
 /** Вибір руху плитками: видно, що саме робитиме кожен тип. */
 export function MotionPicker({ value, onChange }: { value: MotionType; onChange: (t: MotionType) => void }) {

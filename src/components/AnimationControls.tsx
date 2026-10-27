@@ -23,7 +23,7 @@ export function MotionControls({ value, onChange, overridden, onReset }: { value
   return (
     <div className="group">
       <GroupTitle text="Motion" overridden={overridden} onReset={onReset} />
-      <MotionPicker value={value.type} onChange={(type) => onChange({ type })} />
+      <MotionPicker value={value.type} onChange={(type) => onChange(type === 'pop' && value.easing.type !== 'back' && value.easing.type !== 'elastic' ? { type, easing: { type: 'back', strength: 3 } } : { type })} />
       {value.type !== 'none' && (
         <>
           <SliderRow label="Strength" value={value.intensity} min={0} max={0.6} step={0.01} scale={100} onChange={(intensity) => onChange({ intensity })} />

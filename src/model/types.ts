@@ -1,6 +1,6 @@
 // Модель проєкту. Усі позиції й розміри шарів — відносні (0–1), не в пікселях.
 
-export type EasingType = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+export type EasingType = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out' | 'back' | 'elastic'; // back і elastic виходять за 1 (перельот)
 
 export interface Easing {
   type: EasingType;
@@ -10,6 +10,8 @@ export interface Easing {
 
 export type MotionType =
   | 'none' | 'zoom-in' | 'zoom-out' | 'breathe' // breathe — наближення й повернення, добре в циклі
+  | 'drift-ul' | 'drift-ur' | 'drift-dl' | 'drift-dr' // наближення з діагональним зсувом (куди їде картинка)
+  | 'float' | 'pop' | 'focus' | 'handheld'
   | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' // картинка їде в названий бік
   | 'tilt-cw' | 'tilt-ccw'; // легкий нахил за / проти годинникової стрілки
 export interface Motion {
