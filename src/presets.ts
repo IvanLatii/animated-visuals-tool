@@ -80,3 +80,24 @@ export const STARTER_PRESETS: Preset[] = [
   starter('story-soft', 'Story · Soft', { w: 1080, h: 1920, preset: '9:16', background: '#101012', safeZones: DEFAULT_SAFE_ZONES },
     { motion: { type: 'appear', intensity: 0.2, easing: { type: 'ease-out', strength: 3 } }, transitionOut: { type: 'snap', duration: 0.22, easing: { type: 'ease-out', strength: 4 } } }),
 ];
+
+const stable = (v: unknown): string => {
+  if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`;
+  if (v && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stable((v as Record<string, unknown>)[k])}`).join(',')}}`;
+  return JSON.stringify(v);
+};
+
+/** Відбиток налаштувань пресету (без імені й id): однакові відбитки — однакові пресети. */
+export const presetSignature = (p: Preset): string => stable(p.data);
+
+/** id пресетів, що повністю повторюють попередній (стартові йдуть першими) → назва того, кого повторюють. */
+export function findDuplicates(list: Preset[]): Map<string, string> {
+  const seen = new Map<string, string>();
+  const dups = new Map<string, string>();
+  for (const p of [...STARTER_PRESETS, ...list]) {
+    const sig = presetSignature(p);
+    const first = seen.get(sig);
+    if (first !== undefined) dups.set(p.id, first); else seen.set(sig, p.name);
+  }
+  return dups;
+}

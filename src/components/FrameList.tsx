@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Project } from '../model/types';
 import { resolveFrame } from '../model/defaults';
+import { TrashIcon } from './icons';
 
 interface Props {
   project: Project;
@@ -25,11 +26,9 @@ export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onP
       <header>
         <h2>Frames</h2>
         <div className="head-actions">
-          <button className="icon" aria-label="Delete all frames" data-tip="Delete all frames" data-tip-pos="left"
+          <button className="icon danger" aria-label="Delete all frames" data-tip="Delete all frames" data-tip-pos="left"
             disabled={project.frames.length === 0} onClick={onClear}>
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
-              <path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.6 8.5h6.8l.6-8.5M6.7 7v4M9.3 7v4" />
-            </svg>
+            <TrashIcon />
           </button>
           <button onClick={() => addRef.current?.click()}>+ Add</button>
         </div>
@@ -72,7 +71,7 @@ export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onP
                     onClick={(e) => { e.stopPropagation(); replaceId.current = frame.id; replaceRef.current?.click(); }}>Replace</button>
                 </span>
                 <span className="dur">{rf.duration.toFixed(1)} s</span>
-                <button className="icon" data-tip="Delete frame · Delete" data-tip-pos="left" aria-label={`Delete frame ${i + 1}`}
+                <button className="icon danger" data-tip="Delete frame · Delete" data-tip-pos="left" aria-label={`Delete frame ${i + 1}`}
                   onClick={(e) => { e.stopPropagation(); onRemove(frame.id); }}>×</button>
               </li>
             );

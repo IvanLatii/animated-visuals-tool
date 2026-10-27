@@ -20,7 +20,7 @@ function ImageRow({ label, src, onPick, onClear }: { label: string; src?: string
     <Row label={label}>
       {src && <img className="mini" src={src} alt="" />}
       <button onClick={() => ref.current?.click()}>{src ? 'Replace' : 'Choose'}</button>
-      {src && <button className="icon" aria-label={`Remove ${label.toLowerCase()}`} onClick={onClear}>×</button>}
+      {src && <button className="icon danger" aria-label={`Remove ${label.toLowerCase()}`} onClick={onClear}>×</button>}
       <input ref={ref} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''; }} />
     </Row>
   );

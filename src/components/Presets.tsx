@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import type { ExportSettings } from '../export/presets';
 import type { Project } from '../model/types';
-import { applyPreset, loadPresets, makePreset, parsePresets, serializePresets, STARTER_PRESETS, storePresets, upsertPreset, type Preset } from '../presets';
+import { applyPreset, findDuplicates, loadPresets, makePreset, parsePresets, presetSignature, serializePresets, STARTER_PRESETS, storePresets, upsertPreset, type Preset } from '../presets';
+import { TrashIcon } from './icons';
 import { PresetPreview } from './PresetPreview';
 import { Row, Section, useStoredOpen } from './ui';
 
@@ -34,12 +35,19 @@ export function Presets({ project, exportSettings, onChange, onExportSettings }:
   const save = () => {
     const n = name.trim();
     if (!n) return;
+    const made = makePreset(n, project, exportSettings);
+    const twin = [...STARTER_PRESETS, ...presets].find((p) => presetSignature(p) === presetSignature(made));
+    if (twin) { flash(`Same as “${twin.name}”, not saved`); return; } // однаковий пресет не дублюємо
     const exists = presets.some((p) => p.name.toLowerCase() === n.toLowerCase());
-    const next = upsertPreset(presets, makePreset(n, project, exportSettings));
+    const next = upsertPreset(presets, made);
     update(next);
     setName(nextName(next));
     flash(exists ? `Updated “${n}”` : `Saved “${n}”`);
   };
+
+  const dups = findDuplicates(presets);
+  const dupIds = presets.filter((p) => dups.has(p.id)).map((p) => p.id);
+  const nameTaken = presets.some((p) => p.name.toLowerCase() === name.trim().toLowerCase());
 
   const apply = (p: Preset) => {
     onChange((pr) => applyPreset(pr, p));
@@ -68,11 +76,15 @@ export function Presets({ project, exportSettings, onChange, onExportSettings }:
       onPointerEnter={() => setHover(p.id)} onPointerLeave={() => setHover(null)}
       onClick={() => apply(p)} onKeyDown={(e) => { if (e.key === 'Enter') apply(p); }}>
       <div className="preset-thumb"><PresetPreview preset={p} playing={hover === p.id} /></div>
+      {dups.has(p.id) && <span className="dup-tag">Same as {dups.get(p.id)}</span>}
       <div className="preset-info">
-        <b>{p.name}</b>
+        <b title={p.name}>{p.name}</b>
         <span>{p.data.canvas.w}×{p.data.canvas.h} · {pretty(p.data.defaults.motion.type)} · {pretty(p.data.defaults.transitionOut.type)}</span>
       </div>
-      {deletable && <button className="link del" onClick={(e) => { e.stopPropagation(); update(presets.filter((x) => x.id !== p.id)); }}>Delete</button>}
+      {deletable && (
+        <button className="icon danger del" aria-label={`Delete preset ${p.name}`} data-tip="Delete preset" data-tip-pos="left"
+          onClick={(e) => { e.stopPropagation(); update(presets.filter((x) => x.id !== p.id)); }}><TrashIcon /></button>
+      )}
     </div>
   );
 
@@ -83,11 +95,17 @@ export function Presets({ project, exportSettings, onChange, onExportSettings }:
       <div className="preset-grid">
         {STARTER_PRESETS.map((p) => card(p, false))}
         {presets.map((p) => card(p, true))}
+        {(STARTER_PRESETS.length + presets.length) % 2 === 1 && <span className="fill" />}
       </div>
+      {dupIds.length > 0 && (
+        <button className="link danger" onClick={() => { update(presets.filter((p) => !dups.has(p.id))); flash(`Removed ${dupIds.length} duplicate${dupIds.length > 1 ? 's' : ''}`); }}>
+          Remove {dupIds.length} duplicate{dupIds.length > 1 ? 's' : ''}
+        </button>
+      )}
       <Row label="Save current as">
         <input className="txt" value={name} placeholder="Preset name" maxLength={40} aria-label="Preset name"
           onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
-        <button disabled={!name.trim()} onClick={save}>Save</button>
+        <button disabled={!name.trim()} onClick={save}>{nameTaken ? 'Update' : 'Save'}</button>
       </Row>
       {msg && <p className="hint">{msg}</p>}
       <div className="zone-head">

@@ -33,7 +33,7 @@ export function SafeZones({ project, onChange }: Props) {
               ))}
               {z.note && <p className="hint">{z.note}</p>}
               <Row label="Color"><input type="color" value={z.color} onChange={(e) => patch(z.id, { color: e.target.value })} aria-label="Zone color" /></Row>
-              <button className="link" onClick={() => { onChange((pr) => A.removeSafeZone(pr, z.id)); setEditing(null); }}>Delete zone</button>
+              <button className="link danger" onClick={() => { onChange((pr) => A.removeSafeZone(pr, z.id)); setEditing(null); }}>Delete zone</button>
             </div>
           )}
         </div>
