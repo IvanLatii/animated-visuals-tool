@@ -8,6 +8,7 @@ import { Resizer } from './components/Resizer';
 import { Seg } from './components/ui';
 import { DEFAULT_LAYOUT, LIMITS, loadLayout, saveLayout, type Layout } from './layout';
 import { Timeline } from './components/Timeline';
+import { THEME_OPTIONS } from './components/ThemeIcons';
 import { applyTheme, loadTheme, type Theme } from './theme';
 import { DEFAULT_SETTINGS, type ExportSettings } from './export/presets';
 import { newProject } from './model/defaults';
@@ -222,9 +223,7 @@ export function App() {
         onClear={() => { setProject((p) => ({ ...p, frames: [] })); setSelectedId(null); setPlaying(false); seek(0); }} />
         <div className="left-foot">
           <span>Theme</span>
-          <Seg label="Theme" value={theme} onChange={setTheme} options={[
-            { id: 'light', label: 'Light' }, { id: 'dark', label: 'Dark' }, { id: 'system', label: 'Auto' },
-          ]} />
+          <Seg label="Theme" value={theme} onChange={setTheme} options={THEME_OPTIONS} />
         </div>
       </div>
       <Resizer axis="x" label="Left panel width" value={layout.left} min={LIMITS.left[0]} max={LIMITS.left[1]}

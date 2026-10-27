@@ -98,13 +98,13 @@ function usePill(ref: RefObject<HTMLElement | null>, active: unknown) {
 }
 
 export function Seg<T extends string | number>({ value, options, onChange, label }:
-  { value: T; options: { id: T; label: string; title?: string; disabled?: boolean }[]; onChange: (v: T) => void; label: string }) {
+  { value: T; options: { id: T; label: string; title?: string; disabled?: boolean; icon?: ReactNode }[]; onChange: (v: T) => void; label: string }) {
   const ref = useRef<HTMLDivElement>(null);
   usePill(ref, value);
   return (
     <div ref={ref} className="seg pill-host" role="group" aria-label={label}>
       {options.map((o) => (
-        <button key={String(o.id)} className={o.id === value ? 'on' : ''} title={o.title} disabled={o.disabled} onClick={() => onChange(o.id)}>{o.label}</button>
+        <button key={String(o.id)} className={o.id === value ? 'on' : ''} title={o.title ?? (o.icon ? o.label : undefined)} aria-label={o.icon ? o.label : undefined} disabled={o.disabled} onClick={() => onChange(o.id)}>{o.icon ?? o.label}</button>
       ))}
     </div>
   );
