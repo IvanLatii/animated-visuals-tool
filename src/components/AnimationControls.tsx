@@ -5,6 +5,7 @@ import { SelectRow, SliderRow } from './ui';
 
 const TRANSITIONS: { id: TransitionType; label: string }[] = [
   { id: 'cut', label: 'Cut' }, { id: 'crossfade', label: 'Crossfade' }, { id: 'wipe-up', label: 'Wipe up' }, { id: 'wipe-down', label: 'Wipe down' },
+  { id: 'stripes', label: 'Stripes' }, { id: 'columns', label: 'Columns' }, { id: 'zoom-dissolve', label: 'Zoom dissolve' }, { id: 'blur-dissolve', label: 'Blur dissolve' },
 ];
 
 interface Common { overridden: boolean; onReset?: () => void }

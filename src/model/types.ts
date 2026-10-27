@@ -9,7 +9,7 @@ export interface Easing {
 }
 
 export type MotionType =
-  | 'none' | 'zoom-in' | 'zoom-out'
+  | 'none' | 'zoom-in' | 'zoom-out' | 'breathe' // breathe — наближення й повернення, добре в циклі
   | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' // картинка їде в названий бік
   | 'tilt-cw' | 'tilt-ccw'; // легкий нахил за / проти годинникової стрілки
 export interface Motion {
@@ -19,7 +19,7 @@ export interface Motion {
   easing: Easing;
 }
 
-export type TransitionType = 'cut' | 'crossfade' | 'wipe-up' | 'wipe-down';
+export type TransitionType = 'cut' | 'crossfade' | 'wipe-up' | 'wipe-down' | 'stripes' | 'columns' | 'zoom-dissolve' | 'blur-dissolve';
 export interface Transition {
   type: TransitionType;
   /** Секунди. Для 'cut' ігнорується. */

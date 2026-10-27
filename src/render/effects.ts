@@ -24,6 +24,7 @@ const tilt = (sign: 1 | -1): MotionFn => (m, p, { w, h }) => {
 export const motions: Record<MotionType, MotionFn> = {
   none: () => IDENTITY,
   'zoom-in': (m, p) => ({ ...IDENTITY, scale: 1 + m.intensity * applyEasing(m.easing, p) }),
+  breathe: (m, p) => ({ ...IDENTITY, scale: 1 + m.intensity * Math.sin(Math.PI * applyEasing(m.easing, p)) }),
   'zoom-out': (m, p) => ({ ...IDENTITY, scale: 1 + m.intensity * (1 - applyEasing(m.easing, p)) }),
   'pan-left': pan('x', 1),
   'pan-right': pan('x', -1),
