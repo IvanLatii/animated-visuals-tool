@@ -19,7 +19,7 @@ export interface Motion {
   easing: Easing;
 }
 
-export type TransitionType = 'cut' | 'crossfade' | 'wipe-up';
+export type TransitionType = 'cut' | 'crossfade' | 'wipe-up' | 'wipe-down';
 export interface Transition {
   type: TransitionType;
   /** Секунди. Для 'cut' ігнорується. */

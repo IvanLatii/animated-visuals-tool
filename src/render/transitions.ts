@@ -33,4 +33,15 @@ export const transitions: Record<TransitionType, TransitionFn> = {
     drawNext();
     ctx.restore();
   },
-};
+
+
+  // Те саме згори вниз: нове зображення з'являється зверху й опускається.
+  'wipe-down': (ctx, p, drawPrev, drawNext) => {
+    drawPrev();
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height * p);
+    ctx.clip();
+    drawNext();
+    ctx.restore();
+  },};

@@ -218,7 +218,8 @@ export function App() {
         onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelectedId((s) => (s === id ? null : s)); }}
         onMove={(from, to) => setProject((p) => moveFrame(p, from, to))}
         onPickFiles={(files) => void addFiles(files)}
-        onReplace={(id, file) => void replaceFile(id, file)} />
+        onReplace={(id, file) => void replaceFile(id, file)}
+        onClear={() => { setProject((p) => ({ ...p, frames: [] })); setSelectedId(null); setPlaying(false); seek(0); }} />
         <div className="left-foot">
           <span>Theme</span>
           <Seg label="Theme" value={theme} onChange={setTheme} options={[

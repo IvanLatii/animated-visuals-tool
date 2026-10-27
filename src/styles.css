@@ -254,3 +254,5 @@ input.txt:hover, input.txt:focus { background: var(--bg); }
 .picker button.on { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
 .picker button:hover:not(.on) { color: var(--text); }
 button.icon.lock.on { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+
+.head-actions { display: flex; gap: 8px; }

@@ -10,9 +10,10 @@ interface Props {
   onMove: (from: number, to: number) => void;
   onPickFiles: (files: FileList) => void;
   onReplace: (id: string, file: File) => void;
+  onClear: () => void;
 }
 
-export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onPickFiles, onReplace }: Props) {
+export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onPickFiles, onReplace, onClear }: Props) {
   const addRef = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
   const replaceId = useRef<string | null>(null);
@@ -23,7 +24,15 @@ export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onP
     <section className="panel frames">
       <header>
         <h2>Frames</h2>
-        <button onClick={() => addRef.current?.click()}>+ Add</button>
+        <div className="head-actions">
+          <button className="icon" aria-label="Delete all frames" data-tip="Delete all frames" data-tip-pos="left"
+            disabled={project.frames.length === 0} onClick={onClear}>
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+              <path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.6 8.5h6.8l.6-8.5M6.7 7v4M9.3 7v4" />
+            </svg>
+          </button>
+          <button onClick={() => addRef.current?.click()}>+ Add</button>
+        </div>
         <input ref={addRef} type="file" accept="image/*" multiple hidden
           onChange={(e) => { if (e.target.files) onPickFiles(e.target.files); e.target.value = ''; }} />
         <input ref={replaceRef} type="file" accept="image/*" hidden

@@ -4,7 +4,7 @@ import { MotionPicker } from './MotionPicker';
 import { SelectRow, SliderRow } from './ui';
 
 const TRANSITIONS: { id: TransitionType; label: string }[] = [
-  { id: 'cut', label: 'Cut' }, { id: 'crossfade', label: 'Crossfade' }, { id: 'wipe-up', label: 'Wipe up' },
+  { id: 'cut', label: 'Cut' }, { id: 'crossfade', label: 'Crossfade' }, { id: 'wipe-up', label: 'Wipe up' }, { id: 'wipe-down', label: 'Wipe down' },
 ];
 
 interface Common { overridden: boolean; onReset?: () => void }
