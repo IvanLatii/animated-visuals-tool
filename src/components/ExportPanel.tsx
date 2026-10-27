@@ -5,6 +5,7 @@ import { gifMemoryBytes } from '../export/exportGif';
 import { fitToSize } from '../export/fit';
 import { settingsFromJob, toJob, type ExportSettings, type QualityMode } from '../export/presets';
 import { ExportAborted, exportSize } from '../export/renderFrames';
+import { canPick, pickExportHandle, writeHandle, type FileHandle } from '../projectIO';
 import type { ExportJob, Project } from '../model/types';
 import { projectDuration, type Assets } from '../render/renderScene';
 import { Modal } from './Modal';
@@ -21,7 +22,7 @@ interface Props {
   onClose: () => void;
 }
 interface Busy { text: string; progress: number | null }
-interface Result { url: string; name: string; bytes: number; format: ExportJob['format']; note?: string; warn?: boolean }
+interface Result { url: string; name: string; bytes: number; format: ExportJob['format']; blob: Blob; note?: string; warn?: boolean }
 
 const MODES: { id: QualityMode; label: string }[] = [
   { id: 'max', label: 'Max' }, { id: 'balanced', label: 'Balanced' }, { id: 'small', label: 'Small' }, { id: 'custom', label: 'Custom' },
@@ -73,15 +74,19 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
     : job.format === 'mp4' ? { bytes: estimateMp4(project, job), loading: false }
       : gifEstimate?.key === gifKey ? { bytes: gifEstimate.bytes, loading: false } : { bytes: null, loading: true };
 
-  const run = async (work: (signal: AbortSignal, onStatus: (t: string, p: number | null) => void) => Promise<Result | null>) => {
+  const run = async (target: FileHandle | null, work: (signal: AbortSignal, onStatus: (t: string, p: number | null) => void) => Promise<Result | null>) => {
     if (result) URL.revokeObjectURL(result.url);
     setResult(null); setError(null);
     const ctl = new AbortController(); abortRef.current = ctl;
     setBusy({ text: 'Starting…', progress: 0 });
     try {
       const res = await work(ctl.signal, (text, progress) => setBusy({ text, progress }));
+      if (res && target) {
+        setBusy({ text: 'Saving…', progress: null });
+        await writeHandle(target, res.blob);
+        res.note = [`Saved as ${target.name}`, res.note].filter(Boolean).join('. ');
+      } else if (res) startDownload(res); // браузер без вікна збереження: звичайне скачування
       setResult(res);
-      if (res) startDownload(res); // файл одразу йде в Завантаження; кнопка Download лишається, щоб скачати ще раз
     } catch (e) {
       if (!(e instanceof ExportAborted)) setError(e instanceof Error ? e.message : String(e));
     } finally { abortRef.current = null; setBusy(null); }
@@ -89,22 +94,42 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
 
   const makeResult = (blob: Blob, j: ExportJob, note?: string, warn?: boolean): Result => {
     const { w, h } = exportSize(project, j.scale);
-    return { url: URL.createObjectURL(blob), name: `animation-${w}x${h}.${j.format}`, bytes: blob.size, format: j.format, note, warn };
+    return { url: URL.createObjectURL(blob), name: `animation-${w}x${h}.${j.format}`, bytes: blob.size, format: j.format, blob, note, warn };
   };
 
-  const doExport = () => run(async (signal, onStatus) => {
+  /** Спершу питаємо, куди зберегти (вікно має відкритись одразу після кліку), і лише потім рендеримо. */
+  const chooseTarget = async (): Promise<{ handle: FileHandle | null; cancelled: boolean }> => {
+    if (!canPick) return { handle: null, cancelled: false };
+    const ext = `.${s.format}`;
+    const mime = s.format === 'mp4' ? 'video/mp4' : s.format === 'gif' ? 'image/gif' : 'image/png';
+    const base = (project.name ?? '').trim().toLowerCase().replace(/[^a-z0-9\u0400-\u04ff]+/g, '-').replace(/^-+|-+$/g, '') || 'animation';
+    try {
+      const handle = await pickExportHandle(`${base}${ext}`, mime, ext);
+      return { handle, cancelled: handle === null };
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); return { handle: null, cancelled: true }; }
+  };
+
+  const doExport = async () => {
+    const { handle, cancelled } = await chooseTarget();
+    if (cancelled) return;
+    await run(handle, async (signal, onStatus) => {
     const [r] = await exportAll(project, [job], assets, { signal, onStatus, time: t });
     return makeResult(r.blob, r.job);
-  });
+    });
+  };
 
-  const doFit = () => run(async (signal, onStatus) => {
+  const doFit = async () => {
+    const { handle, cancelled } = await chooseTarget();
+    if (cancelled) return;
+    await run(handle, async (signal, onStatus) => {
     const fit = await fitToSize(project, job, targetMb * 1e6, assets, allowScale, { signal, onStatus });
     onSettings(settingsFromJob(fit.job, s));
     const note = `${fit.job.fps} fps, ${exportSize(project, fit.job.scale).w}×${exportSize(project, fit.job.scale).h}${fit.job.gif ? `, quality ${fit.job.gif.quality}` : `, ${(fit.job.mp4!.bitrate / 1e6).toFixed(1)} Mbit/s`}`;
     return makeResult(fit.blob, fit.job,
       fit.fits ? `Fits. Settings: ${note}.` : `Could not fit into ${targetMb} MB. Smallest result: ${note}. Try MP4, a shorter animation or a smaller size.`,
       !fit.fits);
-  });
+    });
+  };
 
   const set = (patch: Partial<ExportSettings>) => onSettings({ ...s, ...patch });
 
@@ -156,7 +181,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
                 {tooBig && <Hint tone="warn">Too many frames for GIF at this size. Lower the FPS or size, or use MP4.</Hint>}
                 <Row label="Fit to, MB"><NumberField value={targetMb} min={0.5} max={500} step={0.5} decimals={1} onChange={setTargetMb} /></Row>
                 <CheckRow label="Allow scaling down" checked={allowScale} onChange={setAllowScale} />
-                <button disabled={empty || busy !== null} onClick={doFit}>Fit into {targetMb} MB and export</button>
+                <button disabled={empty || busy !== null} onClick={() => void doFit()}>Fit into {targetMb} MB and export</button>
               </div>
             </>
           )}
@@ -185,14 +210,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
 
       <footer className="export-foot">
         <p className="summary">{summary}</p>
-        {result && !busy ? (
-          <>
-            <button className="foot-btn" onClick={doExport}>Export again</button>
-            <a className="btn primary foot-btn" href={result.url} download={result.name}>Download {result.format.toUpperCase()}</a>
-          </>
-        ) : (
-          <button className="primary foot-btn" disabled={empty || busy !== null || tooBig} onClick={doExport}>{busy ? 'Exporting…' : `Export ${s.format.toUpperCase()}`}</button>
-        )}
+        <button className="primary foot-btn" disabled={empty || busy !== null || tooBig} onClick={() => void doExport()}>{busy ? 'Exporting…' : `Export ${s.format.toUpperCase()}`}</button>
       </footer>
 
       {confirmClose && (
