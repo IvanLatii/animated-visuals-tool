@@ -27,6 +27,12 @@ const MODES: { id: QualityMode; label: string }[] = [
   { id: 'max', label: 'Max' }, { id: 'balanced', label: 'Balanced' }, { id: 'small', label: 'Small' }, { id: 'custom', label: 'Custom' },
 ];
 
+/** Програмний клік по посиланню: браузер зберігає файл у Завантаження. */
+function startDownload(r: { url: string; name: string }) {
+  const a = document.createElement('a');
+  a.href = r.url; a.download = r.name; a.click();
+}
+
 const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 2 : 1)} MB`;
 
 export function ExportPanel({ project, assets, t, settings: s, onSettings, open, onClose }: Props) {
@@ -73,7 +79,9 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
     const ctl = new AbortController(); abortRef.current = ctl;
     setBusy({ text: 'Starting…', progress: 0 });
     try {
-      setResult(await work(ctl.signal, (text, progress) => setBusy({ text, progress })));
+      const res = await work(ctl.signal, (text, progress) => setBusy({ text, progress }));
+      setResult(res);
+      if (res) startDownload(res); // файл одразу йде в Завантаження; кнопка Download лишається, щоб скачати ще раз
     } catch (e) {
       if (!(e instanceof ExportAborted)) setError(e instanceof Error ? e.message : String(e));
     } finally { abortRef.current = null; setBusy(null); }
@@ -169,7 +177,6 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
               <div className="result-info">
                 <Row label={result.name}><b className={`val ${!isPng && result.bytes > targetMb * 1e6 ? 'over' : ''}`}>{mb(result.bytes)}</b></Row>
                 {result.note && <Hint tone={result.warn ? 'warn' : undefined}>{result.note}</Hint>}
-                <a className="download" href={result.url} download={result.name}>Download</a>
               </div>
             </>
           ) : error ? <Hint tone="warn">{error}</Hint> : <p className="hint center">The result appears here</p>}
@@ -178,7 +185,14 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
 
       <footer className="export-foot">
         <p className="summary">{summary}</p>
-        <button className="primary" disabled={empty || busy !== null || tooBig} onClick={doExport}>Export {s.format.toUpperCase()}</button>
+        {result && !busy ? (
+          <>
+            <button className="foot-btn" onClick={doExport}>Export again</button>
+            <a className="btn primary foot-btn" href={result.url} download={result.name}>Download {result.format.toUpperCase()}</a>
+          </>
+        ) : (
+          <button className="primary foot-btn" disabled={empty || busy !== null || tooBig} onClick={doExport}>{busy ? 'Exporting…' : `Export ${s.format.toUpperCase()}`}</button>
+        )}
       </footer>
 
       {confirmClose && (
