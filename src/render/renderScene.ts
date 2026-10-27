@@ -46,6 +46,8 @@ export function projectDuration(project: Project): number {
 function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fill', assets: Assets, size: Size) {
   const img = assets.get(layer.src);
   if (!img) return;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high'; // без цього повільний зум дрібно «мерехтить»
   const { w: W, h: H } = size;
   const rx = layer.x * W, ry = layer.y * H, rw = layer.w * W, rh = layer.h * H;
   const k = fit === 'fill'
@@ -67,6 +69,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault:
   ctx.scale(tr.scale, tr.scale);
   ctx.translate(-W / 2, -H / 2);
   if (tr.blur) ctx.filter = `blur(${(tr.blur * W).toFixed(2)}px)`;
+  if (tr.alpha !== undefined && tr.alpha < 1) ctx.globalAlpha *= Math.max(0, tr.alpha);
   for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets, size);
   ctx.restore();
 }

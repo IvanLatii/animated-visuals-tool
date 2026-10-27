@@ -1,4 +1,4 @@
-import type { Defaults, Easing, Frame, Layer, Motion, Project, SafeZone, Stage, Transition } from './types';
+import type { Defaults, Easing, Frame, Layer, Motion, MotionType, Project, SafeZone, Stage, Transition, TransitionType } from './types';
 
 export const CANVAS_PRESETS = {
   '1:1': { w: 1080, h: 1080 },
@@ -10,6 +10,28 @@ export const CANVAS_PRESETS = {
 // Зум: різкий старт, дуже повільний кінець. Перехід: плавний з обох боків.
 export const MOTION_EASING: Easing = { type: 'ease-out', strength: 3 };
 export const TRANSITION_EASING: Easing = { type: 'ease-in-out', strength: 2 };
+
+/** Рекомендовані параметри при виборі типу руху (зум і «без руху» нічого не міняють). Плавні, без різких стрибків. */
+export const MOTION_DEFAULTS: Partial<Record<MotionType, Partial<Motion>>> = {
+  focus: { intensity: 0.2, easing: { type: 'ease-in-out', strength: 2.5 } },
+  appear: { intensity: 0.2, easing: { type: 'ease-out', strength: 3 } },
+  rise: { intensity: 0.2, easing: { type: 'ease-out', strength: 4 } },
+  pop: { intensity: 0.2, easing: { type: 'ease-out', strength: 4 } },
+};
+
+/** Рекомендована тривалість і крива при виборі переходу: швидкі, але не різкі. */
+export const TRANSITION_DEFAULTS: Record<TransitionType, Partial<Transition>> = {
+  cut: {},
+  snap: { duration: 0.22, easing: { type: 'ease-out', strength: 4 } },
+  crossfade: { duration: 0.35, easing: { type: 'ease-in-out', strength: 2 } },
+  'wipe-up': { duration: 0.55, easing: { type: 'ease-out', strength: 4 } },
+  'wipe-down': { duration: 0.55, easing: { type: 'ease-out', strength: 4 } },
+  stripes: { duration: 0.8, easing: { type: 'ease-in-out', strength: 2.5 } },
+  'stripes-alt': { duration: 0.8, easing: { type: 'ease-in-out', strength: 2.5 } },
+  columns: { duration: 0.8, easing: { type: 'ease-in-out', strength: 2.5 } },
+  'zoom-dissolve': { duration: 0.5, easing: { type: 'ease-in-out', strength: 2 } },
+  'blur-dissolve': { duration: 0.5, easing: { type: 'ease-in-out', strength: 2 } },
+};
 
 export const DEFAULT_MOTION: Motion = { type: 'zoom-in', intensity: 0.2, easing: MOTION_EASING };
 export const DEFAULT_TRANSITION: Transition = { type: 'crossfade', duration: 0.3, easing: TRANSITION_EASING };

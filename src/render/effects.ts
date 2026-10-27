@@ -2,10 +2,13 @@ import type { Motion, MotionType } from '../model/types';
 import { applyEasing } from './easing';
 
 /** Єдиний інтерфейс руху: прогрес кадру 0–1 → масштаб, зсув (у частках полотна) і поворот (радіани). */
-export interface MotionTransform { scale: number; dx: number; dy: number; rotate: number; blur?: number } // blur — частка ширини
+export interface MotionTransform { scale: number; dx: number; dy: number; rotate: number; blur?: number; alpha?: number } // blur — частка ширини, alpha — прозорість кадру
 export type MotionFn = (motion: Motion, progress: number, size: { w: number; h: number }) => MotionTransform;
 
-const IDENTITY: MotionTransform = { scale: 1, dx: 0, dy: 0, rotate: 0, blur: 0 };
+const IDENTITY: MotionTransform = { scale: 1, dx: 0, dy: 0, rotate: 0, blur: 0, alpha: 1 };
+
+/** Прогрес, стиснутий у перші `share` кадру: ефект з'являється швидко й далі кадр стоїть спокійно. */
+const early = (p: number, share: number) => Math.min(1, p / share);
 
 /** Панорама: картинку трохи збільшуємо (на intensity), щоб при зсуві не відкривалися краї; їде від +половини запасу до −половини. */
 const pan = (axis: 'x' | 'y', sign: 1 | -1): MotionFn => (m, p) => {
@@ -49,12 +52,22 @@ export const motions: Record<MotionType, MotionFn> = {
     const cover = Math.cos(max) + Math.sin(max) * Math.max(w / h, h / w) + 2 * a;
     return { ...IDENTITY, scale: cover, dy: a * Math.sin(2 * Math.PI * p), rotate: max * Math.sin(2 * Math.PI * p + Math.PI / 2) };
   },
-  // Pop in: з меншого розміру до 1; гарно виглядає з кривою Back або Elastic. Тло вікна на старті видно.
-  pop: (m, p) => ({ ...IDENTITY, scale: 1 - m.intensity + m.intensity * applyEasing(m.easing, p) }),
-  // Focus in: розмите стає різким, з легким наближенням. Блюр — частка ширини.
+  // Pop in: м'яке «осідання» з трохи меншого розміру за перші 50% кадру, без стрибків.
+  pop: (m, p) => ({ ...IDENTITY, scale: 1 - m.intensity * 0.4 * (1 - applyEasing(m.easing, early(p, 0.5))) }),
+  // Focus in: розмите стає різким за перші 60% кадру й далі стоїть різким; блюр і наближення згасають по кривій, без різкого старту.
   focus: (m, p) => {
-    const e = applyEasing(m.easing, p);
-    return { ...IDENTITY, scale: 1 + 0.04 * (1 - e) * (m.intensity / 0.2), blur: Math.max(0, m.intensity * 0.12 * (1 - e)) };
+    const e = applyEasing(m.easing, early(p, 0.6));
+    return { ...IDENTITY, scale: 1 + 0.03 * (1 - e) * (m.intensity / 0.2), blur: Math.max(0, m.intensity * 0.1 * (1 - e)) };
+  },
+  // Appear: з прозорості й трохи меншого розміру за перші 50% кадру.
+  appear: (m, p) => {
+    const e = applyEasing(m.easing, early(p, 0.5));
+    return { ...IDENTITY, scale: 1 - m.intensity * 0.2 * (1 - e), alpha: Math.min(1, Math.max(0, e)) };
+  },
+  // Rise: піднімається знизу на кілька відсотків, одночасно проявляючись.
+  rise: (m, p) => {
+    const e = applyEasing(m.easing, early(p, 0.5));
+    return { ...IDENTITY, dy: m.intensity * 0.3 * (1 - e), alpha: Math.min(1, Math.max(0, e)) };
   },
   // Handheld: м'яке «тремтіння руки». Цілі частоти, тому початок і кінець збігаються (зручно в циклі).
   handheld: (m, p, { w, h }) => {

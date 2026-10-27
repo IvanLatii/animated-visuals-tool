@@ -9,7 +9,7 @@ const m = (type: Motion['type'], intensity: number): Motion => ({ type, intensit
 export const MOTION_PROFILES: MotionProfile[] = [
   { id: 'slow-zoom-in', label: 'Slow zoom in', steps: [m('zoom-in', 0.12)] },
   { id: 'zoom-in-out', label: 'Zoom in / out', steps: [m('zoom-in', 0.2), m('zoom-out', 0.2)] },
-  { id: 'ken-burns', label: 'Ken Burns flow', steps: [m('zoom-in', 0.2), m('pan-left', 0.15), m('zoom-out', 0.2), m('pan-right', 0.15)] },
-  { id: 'float-tilt', label: 'Float and tilt', steps: [m('tilt-cw', 0.25), m('tilt-ccw', 0.25)] },
+  { id: 'zoom-focus', label: 'Zoom and focus', steps: [m('zoom-in', 0.2), m('focus', 0.2), m('zoom-out', 0.2), m('focus', 0.2)] },
+  { id: 'appear', label: 'Soft appear', steps: [m('appear', 0.2)] },
   { id: 'static', label: 'Static', steps: [m('none', 0.2)] },
 ];
