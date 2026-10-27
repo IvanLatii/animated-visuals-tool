@@ -228,13 +228,13 @@ export function App() {
       <header className="topbar">
         <input className="name" value={project.name ?? ''} placeholder="Untitled" aria-label="Project name" maxLength={60}
           onChange={(e) => setProject((p) => setProjectName(p, e.target.value))} />
-        <button data-tip="Open project · ⌘ O" onClick={() => void requestOpen()}>Open</button>
-        <button data-tip="Save · ⌘ S" onClick={() => void saveProject()}>Save</button>
-        <button data-tip="Save as… · ⌘ ⇧ S" onClick={() => void saveProject(true)}>Save as</button>
+        <button data-tip="Open a saved project · ⌘ O" onClick={() => void requestOpen()}>Open</button>
+        <button data-tip="Save project to keep editing later · ⌘ S" onClick={() => void saveProject()}>Save</button>
+        <button data-tip="Save project to a new file · ⌘ ⇧ S" onClick={() => void saveProject(true)}>Save as</button>
         <input ref={openRef} type="file" accept=".json,application/json" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void openProject(f); e.target.value = ''; }} />
         <b className="brand">Animated Visuals</b>
-        <button className="primary export-btn" onClick={() => setExportOpen(true)}>Export</button>
+        <button className="primary export-btn" data-tip="Make the final MP4, GIF or PNG" data-tip-pos="left" onClick={() => setExportOpen(true)}>Export</button>
       </header>
       <div className="left">
       <FrameList project={project} selectedId={selectedId}
