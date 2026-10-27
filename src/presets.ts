@@ -1,4 +1,5 @@
 import type { ExportSettings } from './export/presets';
+import { DEFAULT_SAFE_ZONES, DEFAULTS } from './model/defaults';
 import type { Defaults, Project, Stage } from './model/types';
 
 // Пресет — налаштування без картинок і кадрів: формат, тло, safe-зони, значення за замовчуванням (рух, перехід, криві, fit, тривалість) та режим експорту.
@@ -61,3 +62,21 @@ export function parsePresets(text: string): Preset[] {
   if (ok.length === 0) throw new Error('No valid presets in the file');
   return ok;
 }
+
+// Стартові пресети — для наочності й швидкого старту; їх не можна видалити. Без прив'язки до конкретних соцмереж.
+const STARTER_EXPORT: ExportSettings = { format: 'mp4', fps: 30, mode: 'balanced', scale: 1, gifQuality: 90, mp4Mbps: 4 };
+
+const starter = (id: string, name: string, canvas: PresetData['canvas'], defaults: Partial<Defaults>, stage?: PresetData['stage']): Preset => ({
+  id: `starter-${id}`, name,
+  data: { canvas, defaults: { ...DEFAULTS, ...defaults } as Defaults, stage, export: STARTER_EXPORT },
+});
+
+export const STARTER_PRESETS: Preset[] = [
+  starter('square-zoom', 'Square · Zoom', { w: 1080, h: 1080, preset: '1:1', background: '#ffffff', safeZones: DEFAULT_SAFE_ZONES },
+    { motion: { type: 'zoom-in', intensity: 0.2, easing: { type: 'ease-out', strength: 3 } }, transitionOut: { type: 'crossfade', duration: 0.35, easing: { type: 'ease-in-out', strength: 2 } } }),
+  starter('portrait-card', 'Portrait · Card', { w: 1080, h: 1350, preset: '4:5', background: '#ece8e1', safeZones: DEFAULT_SAFE_ZONES },
+    { layerFit: 'fill', motion: { type: 'zoom-out', intensity: 0.15, easing: { type: 'ease-out', strength: 3 } }, transitionOut: { type: 'wipe-up', duration: 0.55, easing: { type: 'ease-out', strength: 4 } } },
+    { slot: { x: 0.12, y: 0.14, w: 0.76, h: 0.72 }, radius: 0.04, shadow: 0.5 }),
+  starter('story-soft', 'Story · Soft', { w: 1080, h: 1920, preset: '9:16', background: '#101012', safeZones: DEFAULT_SAFE_ZONES },
+    { motion: { type: 'appear', intensity: 0.2, easing: { type: 'ease-out', strength: 3 } }, transitionOut: { type: 'snap', duration: 0.22, easing: { type: 'ease-out', strength: 4 } } }),
+];

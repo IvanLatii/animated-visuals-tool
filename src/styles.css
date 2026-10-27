@@ -273,3 +273,14 @@ img.mini { height: var(--h); width: 36px; object-fit: cover; display: block; }
 .spacer { flex: 1; }
 a.btn { height: var(--h); padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; font: 10px var(--mono); letter-spacing: .02em; text-transform: uppercase; text-decoration: none; white-space: nowrap; color: var(--text); background: var(--panel); border: 1px solid var(--line-strong); }
 a.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* --- Картки пресетів --- */
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.preset { position: relative; display: flex; flex-direction: column; border: 1px solid var(--line-strong); cursor: pointer; background: var(--panel); min-width: 0; }
+.preset:hover, .preset:focus-visible { border-color: var(--ink); }
+.preset-thumb { height: 124px; display: flex; align-items: center; justify-content: center; background: var(--bg); background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 14px 14px; }
+.preset-thumb canvas { display: block; box-shadow: 0 0 0 1px var(--line-strong); }
+.preset-info { padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--line); min-width: 0; }
+.preset-info b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preset-info span { color: var(--muted); font-size: 10px; line-height: 1.35; }
+.preset .del { position: absolute; top: 6px; right: 8px; background: var(--panel); padding: 0 4px; }
