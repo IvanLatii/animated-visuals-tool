@@ -247,10 +247,24 @@ input.txt:hover, input.txt:focus { background: var(--bg); }
 .left-foot { flex: none; height: var(--bar); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-top: 1px solid var(--line); color: var(--muted); }
 .left-foot .seg { width: auto; }
 .left-foot .seg button { flex: none; padding: 0 10px; }
-.picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-.picker button { height: 48px; flex-direction: column; gap: 2px; padding: 0; color: var(--muted); text-transform: none; letter-spacing: 0; font-size: 10px; }
-.picker button.on { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+
+.picker button { flex-direction: column; gap: 2px; padding: 0; color: var(--muted); text-transform: none; letter-spacing: 0; font-size: 10px; }
+.picker button.on { background: var(--ink); color: var(--on-ink); }
 .picker button:hover:not(.on) { color: var(--text); }
 button.icon.lock.on { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
 
 .head-actions { display: flex; gap: 8px; }
+
+/* --- Вікно вмісту на артборді --- */
+.slot-edit { position: absolute; border: 1px solid var(--accent); box-shadow: 0 0 0 1px rgb(0 0 0 / .45); cursor: move; touch-action: none; }
+.slot-edit .hd { position: absolute; width: 9px; height: 9px; background: #fff; border: 1px solid var(--accent); margin: -5px 0 0 -5px; }
+.hd-nw { left: 0; top: 0; cursor: nwse-resize; } .hd-n { left: 50%; top: 0; cursor: ns-resize; } .hd-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.hd-e { left: 100%; top: 50%; cursor: ew-resize; } .hd-se { left: 100%; top: 100%; cursor: nwse-resize; } .hd-s { left: 50%; top: 100%; cursor: ns-resize; }
+.hd-sw { left: 0; top: 100%; cursor: nesw-resize; } .hd-w { left: 0; top: 50%; cursor: ew-resize; }
+img.mini { height: var(--h); width: 36px; object-fit: cover; display: block; }
+
+/* --- Сітка вибору руху: один квадрат, лінії по 1 px --- */
+.picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 1px solid var(--line-strong); border-left: 1px solid var(--line-strong); }
+.picker button { height: 56px; border: none; border-right: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); background: var(--panel); }
+.picker button.on { border-right-color: var(--line-strong); border-bottom-color: var(--line-strong); }
+.picker .fill { border-right: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); }

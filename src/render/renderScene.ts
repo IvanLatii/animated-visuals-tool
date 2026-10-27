@@ -3,7 +3,7 @@ import { resolveFrame, type ResolvedFrame } from '../model/defaults';
 import type { Layer, Project } from '../model/types';
 import { applyEasing } from './easing';
 import { motions } from './effects';
-import { transitions } from './transitions';
+import { transitions, type Size } from './transitions';
 
 /** Завантажені зображення за src. Малювання не чекає на мережу, тож усе вантажимо наперед. */
 export type Assets = Map<string, CanvasImageSource & { width: number; height: number }>;
@@ -11,6 +11,8 @@ export type Assets = Map<string, CanvasImageSource & { width: number; height: nu
 export async function loadAssets(project: Project): Promise<Assets> {
   const assets: Assets = new Map();
   const srcs = new Set(project.frames.flatMap((f) => f.layers.map((l) => l.src)));
+  if (project.stage.background) srcs.add(project.stage.background);
+  if (project.stage.overlay) srcs.add(project.stage.overlay);
   await Promise.all([...srcs].map(async (src) => {
     assets.set(src, await loadImage(src));
   }));
@@ -41,10 +43,10 @@ export function projectDuration(project: Project): number {
   return buildTimeline(project).total;
 }
 
-function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fill', assets: Assets) {
+function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fill', assets: Assets, size: Size) {
   const img = assets.get(layer.src);
   if (!img) return;
-  const { width: W, height: H } = ctx.canvas;
+  const { w: W, h: H } = size;
   const rx = layer.x * W, ry = layer.y * H, rw = layer.w * W, rh = layer.h * H;
   const k = fit === 'fill'
     ? Math.max(rw / img.width, rh / img.height)
@@ -56,15 +58,15 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fi
   ctx.restore();
 }
 
-function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets) {
-  const { width: W, height: H } = ctx.canvas;
+function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size) {
+  const { w: W, h: H } = size;
   const tr = motions[rf.motion.type](rf.motion, progress, { w: W, h: H });
   ctx.save();
   ctx.translate(W / 2 + tr.dx * W, H / 2 + tr.dy * H);
   ctx.rotate(tr.rotate);
   ctx.scale(tr.scale, tr.scale);
   ctx.translate(-W / 2, -H / 2);
-  for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets);
+  for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets, size);
   ctx.restore();
 }
 
@@ -72,15 +74,68 @@ function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault:
  * Єдина функція малювання: прев'ю й експорти викликають тільки її.
  * Статична картинка = t = 0. Розмір у пікселях береться з canvas.
  */
+/** Картинка на весь прямокутник із збереженням пропорцій (зайве обрізається). */
+function drawCover(ctx: CanvasRenderingContext2D, img: CanvasImageSource & { width: number; height: number }, w: number, h: number) {
+  const k = Math.max(w / img.width, h / img.height);
+  const iw = img.width * k, ih = img.height * k;
+  ctx.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
+}
+
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.roundRect(x, y, w, h, r);
+}
+
+/**
+ * Єдина функція малювання: прев'ю й експорти викликають тільки її.
+ * Статична картинка = t = 0. Розмір у пікселях береться з canvas.
+ * Шари знизу вгору: колір і картинка фону → тінь вікна → кадри (обрізані вікном) → накладка.
+ */
 export function renderScene(project: Project, t: number, canvas: HTMLCanvasElement, assets: Assets): void {
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const W = canvas.width, H = canvas.height;
   ctx.fillStyle = project.canvas.background;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, W, H);
+  const { stage } = project;
+  const bg = stage.background ? assets.get(stage.background) : undefined;
+  if (bg) drawCover(ctx, bg, W, H);
+
+  const drawOverlay = () => {
+    const ov = stage.overlay ? assets.get(stage.overlay) : undefined;
+    if (ov) drawCover(ctx, ov, W, H);
+  };
 
   const fitDefault = project.defaults.layerFit;
   const { items, total } = buildTimeline(project);
-  if (!items.length) return;
+  if (!items.length) { drawOverlay(); return; }
   const time = Math.min(Math.max(t, 0), total);
+
+  // Вікно вмісту
+  const sx = stage.slot.x * W, sy = stage.slot.y * H, sw = stage.slot.w * W, sh = stage.slot.h * H;
+  const r = Math.max(0, Math.min(stage.radius * W, sw / 2, sh / 2));
+  const size: Size = { w: sw, h: sh };
+
+  if (stage.shadow > 0) {
+    // Тінь лише ззовні вікна: вирізаємо саме вікно (evenodd), щоб заливка не просвічувала крізь кадри.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, H);
+    roundRectPath(ctx, sx, sy, sw, sh, r);
+    ctx.clip('evenodd');
+    ctx.shadowColor = `rgba(0, 0, 0, ${0.55 * stage.shadow})`;
+    ctx.shadowBlur = 0.05 * W * stage.shadow;
+    ctx.shadowOffsetY = 0.012 * W * stage.shadow;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    roundRectPath(ctx, sx, sy, sw, sh, r);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  roundRectPath(ctx, sx, sy, sw, sh, r);
+  ctx.clip();
+  ctx.translate(sx, sy);
 
   // Активний кадр: останній, що вже почався (з урахуванням переходу всередину).
   let idx = 0;
@@ -99,10 +154,13 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
     transitions[tr.type](
       ctx,
       applyEasing(tr.easing, p),
-      () => drawFrame(ctx, prev.rf, fitDefault, progressOf(prev), assets),
-      () => drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets),
+      () => drawFrame(ctx, prev.rf, fitDefault, progressOf(prev), assets, size),
+      () => drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size),
+      size,
     );
   } else {
-    drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets);
+    drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size);
   }
+  ctx.restore();
+  drawOverlay();
 }

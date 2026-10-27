@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
-import type { Project } from '../model/types';
+import type { Project, Rect } from '../model/types';
 import { renderScene, type Assets } from '../render/renderScene';
 
 interface Props {
   project: Project;
   assets: Assets;
   t: number;
+  editSlot: boolean;
+  onSlot: (r: Rect) => void;
   playing: boolean;
   loop: boolean;
   duration: number;
@@ -16,15 +18,19 @@ interface Props {
 const PAD_X = 56, PAD_Y = 52; // місце для кутових рисок і підписів навколо артборда
 const MIN_SCALE = 0.05, MAX_SCALE = 8;
 
+type Handle = 'move' | 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+
 interface View { zoom: number; x: number; y: number } // zoom = множник відносно «вмістити», x/y — зсув у пікселях екрана
 
-export function Preview({ project, assets, t, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, editSlot, onSlot, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<View>({ zoom: 1, x: 0, y: 0 });
   const [panning, setPanning] = useState(false);
+  const slotDrag = useRef<{ handle: Handle; sx: number; sy: number; rect: Rect } | null>(null);
   const { w, h } = project.canvas;
   const visibleZones = project.canvas.safeZones.filter((z) => z.visible);
   // Спільна область: найсуворіший відступ кожного боку з показаних зон.
@@ -109,6 +115,28 @@ export function Preview({ project, assets, t, playing, loop, duration, onToggleP
   };
   const endPan = () => { panRef.current = null; setPanning(false); };
 
+  // Рамка вікна вмісту: тягнеш усередині — рухається, за маркери — змінює розмір. Зсув у пікселях екрана → частки полотна.
+  const slotDown = (e: PointerEvent, handle: Handle) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* штучна подія без реального вказівника */ }
+    slotDrag.current = { handle, sx: e.clientX, sy: e.clientY, rect: { ...project.stage.slot } };
+  };
+  const slotMove = (e: PointerEvent) => {
+    const d = slotDrag.current;
+    if (!d) return;
+    const dx = (e.clientX - d.sx) / (w * scale), dy = (e.clientY - d.sy) / (h * scale);
+    const r = { ...d.rect };
+    if (d.handle === 'move') { r.x += dx; r.y += dy; }
+    else {
+      if (d.handle.includes('w')) { r.x = d.rect.x + dx; r.w = d.rect.w - dx; }
+      if (d.handle.includes('e')) r.w = d.rect.w + dx;
+      if (d.handle.includes('n')) { r.y = d.rect.y + dy; r.h = d.rect.h - dy; }
+      if (d.handle.includes('s')) r.h = d.rect.h + dy;
+    }
+    onSlot(r);
+  };
+
   const empty = project.frames.length === 0;
   const presetLabel = project.canvas.preset === 'custom' ? 'Custom' : project.canvas.preset;
   const pct = Math.round(scale * 100);
@@ -129,6 +157,15 @@ export function Preview({ project, assets, t, playing, loop, duration, onToggleP
           {combined && (
             <div className="safe-zone combined" style={{ inset: `${combined.top * 100}% ${combined.right * 100}% ${combined.bottom * 100}% ${combined.left * 100}%`, '--zc': '#ffd400' } as CSSProperties}>
               <span>{visibleZones.map((z) => z.name.split(' ')[0]).join(', ')}</span>
+            </div>
+          )}
+          {editSlot && (
+            <div className="slot-edit" style={{ left: `${project.stage.slot.x * 100}%`, top: `${project.stage.slot.y * 100}%`, width: `${project.stage.slot.w * 100}%`, height: `${project.stage.slot.h * 100}%` }}
+              onPointerDown={(e) => slotDown(e, 'move')} onPointerMove={slotMove} onPointerUp={() => { slotDrag.current = null; }} onPointerCancel={() => { slotDrag.current = null; }}
+              onDoubleClick={(e) => e.stopPropagation()}>
+              {HANDLES.map((hd) => (
+                <i key={hd} className={`hd hd-${hd}`} onPointerDown={(e) => slotDown(e, hd)} />
+              ))}
             </div>
           )}
           <span className="cap bottom">{presetLabel} · {w}×{h} · {pct}%</span>

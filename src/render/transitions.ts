@@ -4,11 +4,13 @@ import type { TransitionType } from '../model/types';
  * Єдиний інтерфейс переходу. progress — вже пропущений через криву, 0–1.
  * drawPrev / drawNext малюють відповідний кадр на canvas.
  */
+export interface Size { w: number; h: number }
 export type TransitionFn = (
   ctx: CanvasRenderingContext2D,
   progress: number,
   drawPrev: () => void,
   drawNext: () => void,
+  size: Size, // область, у якій грають кадри (вікно вмісту)
 ) => void;
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -25,12 +27,11 @@ export const transitions: Record<TransitionType, TransitionFn> = {
   },
 
   // Нове зображення виїжджає знизу вгору поверх попереднього: обрізаємо область малювання.
-  'wipe-up': (ctx, p, drawPrev, drawNext) => {
+  'wipe-up': (ctx, p, drawPrev, drawNext, { w, h }) => {
     drawPrev();
     ctx.save();
-    const h = ctx.canvas.height;
     ctx.beginPath();
-    ctx.rect(0, h * (1 - p), ctx.canvas.width, h * p);
+    ctx.rect(0, h * (1 - p), w, h * p);
     ctx.clip();
     drawNext();
     ctx.restore();
@@ -38,20 +39,19 @@ export const transitions: Record<TransitionType, TransitionFn> = {
 
 
   // Те саме згори вниз: нове зображення з'являється зверху й опускається.
-  'wipe-down': (ctx, p, drawPrev, drawNext) => {
+  'wipe-down': (ctx, p, drawPrev, drawNext, { w, h }) => {
     drawPrev();
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height * p);
+    ctx.rect(0, 0, w, h * p);
     ctx.clip();
     drawNext();
     ctx.restore();
   },
 
   // Смуги: горизонтальні смуги по черзі виїжджають зліва й справа, кожна трохи пізніше за попередню.
-  stripes: (ctx, p, drawPrev, drawNext) => {
+  stripes: (ctx, p, drawPrev, drawNext, { w: W, h: H }) => {
     drawPrev();
-    const { width: W, height: H } = ctx.canvas;
     const n = 8, stagger = 0.5, bh = H / n;
     ctx.save();
     ctx.beginPath();
@@ -66,9 +66,8 @@ export const transitions: Record<TransitionType, TransitionFn> = {
   },
 
   // Колонки: вертикальні колонки по черзі опускаються зверху вниз, зліва направо.
-  columns: (ctx, p, drawPrev, drawNext) => {
+  columns: (ctx, p, drawPrev, drawNext, { w: W, h: H }) => {
     drawPrev();
-    const { width: W, height: H } = ctx.canvas;
     const n = 10, stagger = 0.5, cw = W / n;
     ctx.save();
     ctx.beginPath();
@@ -82,8 +81,7 @@ export const transitions: Record<TransitionType, TransitionFn> = {
   },
 
   // Zoom dissolve: старе трохи наближається й тане, нове з'являється з наближення й стає на місце.
-  'zoom-dissolve': (ctx, p, drawPrev, drawNext) => {
-    const { width: W, height: H } = ctx.canvas;
+  'zoom-dissolve': (ctx, p, drawPrev, drawNext, { w: W, h: H }) => {
     const scaled = (s: number, draw: () => void) => {
       ctx.save();
       ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2);
@@ -98,8 +96,8 @@ export const transitions: Record<TransitionType, TransitionFn> = {
   },
 
   // Blur dissolve: старе розмивається й тане, нове проявляється з розмиття. ctx.filter є в Chrome; Safari його не підтримує.
-  'blur-dissolve': (ctx, p, drawPrev, drawNext) => {
-    const px = (ctx.canvas.width / 1080) * 28;
+  'blur-dissolve': (ctx, p, drawPrev, drawNext, { w }) => {
+    const px = (w / 1080) * 28;
     ctx.save();
     ctx.filter = `blur(${(px * p).toFixed(2)}px)`;
     drawPrev();

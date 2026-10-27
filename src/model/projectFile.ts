@@ -26,5 +26,6 @@ export function parseProject(json: string): Project {
     ...base, ...data,
     canvas: { ...base.canvas, ...data.canvas },
     defaults: { ...base.defaults, ...data.defaults },
+    stage: { ...base.stage, ...data.stage, slot: { ...base.stage.slot, ...data.stage?.slot } },
   } as Project;
 }

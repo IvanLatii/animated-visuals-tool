@@ -1,4 +1,4 @@
-import type { Defaults, Easing, Frame, Layer, Motion, Project, SafeZone, Transition } from './types';
+import type { Defaults, Easing, Frame, Layer, Motion, Project, SafeZone, Stage, Transition } from './types';
 
 export const CANVAS_PRESETS = {
   '1:1': { w: 1080, h: 1080 },
@@ -43,6 +43,8 @@ export const DEFAULT_SAFE_ZONES: SafeZone[] = [
     note: 'Figures come from third-party guides that cite Meta (14% top, 35% bottom, 6% sides). Not confirmed on an official Meta page.' },
 ];
 
+export const DEFAULT_STAGE: Stage = { slot: { x: 0, y: 0, w: 1, h: 1 }, radius: 0, shadow: 0 };
+
 export function newProject(preset: keyof typeof CANVAS_PRESETS = '1:1'): Project {
   return {
     version: 1,
@@ -50,6 +52,7 @@ export function newProject(preset: keyof typeof CANVAS_PRESETS = '1:1'): Project
     canvas: { ...CANVAS_PRESETS[preset], preset, background: '#000000', safeZones: structuredClone(DEFAULT_SAFE_ZONES) },
     frames: [],
     defaults: structuredClone(DEFAULTS),
+    stage: structuredClone(DEFAULT_STAGE),
   };
 }
 

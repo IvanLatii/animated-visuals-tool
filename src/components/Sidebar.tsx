@@ -17,15 +17,16 @@ interface Props {
   exportSettings: ExportSettings;
   onChange: (fn: (p: Project) => Project) => void;
   onExportSettings: (s: ExportSettings) => void;
+  stage: React.ComponentProps<typeof DesignPanel>['stage'];
 }
 
-export function Sidebar({ project, selectedId, duration, exportSettings, onChange, onExportSettings }: Props) {
+export function Sidebar({ project, selectedId, duration, exportSettings, onChange, onExportSettings, stage }: Props) {
   const [tab, setTab] = useState<Tab>('design');
   return (
     <aside className="side">
       <Tabs label="Panel" value={tab} onChange={setTab} options={TABS} />
       <div className="side-scroll">
-        {tab === 'design' && <DesignPanel project={project} exportSettings={exportSettings} onChange={onChange} onExportSettings={onExportSettings} />}
+        {tab === 'design' && <DesignPanel project={project} exportSettings={exportSettings} onChange={onChange} onExportSettings={onExportSettings} stage={stage} />}
         {tab === 'animate' && <AnimatePanel project={project} selectedId={selectedId} duration={duration} onChange={onChange} />}
       </div>
     </aside>

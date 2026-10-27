@@ -1,6 +1,6 @@
 import { CANVAS_PRESETS, imageLayer } from '../model/defaults';
 import type { MotionProfile } from '../model/profiles';
-import type { Frame, Motion, Project, SafeZone, Transition } from '../model/types';
+import type { Frame, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
 
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
 
@@ -146,4 +146,32 @@ export function scaleTotalDuration(project: Project, total: number): Project {
     defaults: { ...project.defaults, frameDuration: scale(project.defaults.frameDuration) },
     frames: project.frames.map((f) => (f.duration === undefined ? f : { ...f, duration: scale(f.duration) })),
   };
+}
+
+// --- Сцена: фон, накладка, вікно вмісту ---
+export function setStageImage(project: Project, kind: 'background' | 'overlay', src: string | undefined): Project {
+  return { ...project, stage: { ...project.stage, [kind]: src } };
+}
+
+/** Рухає або змінює розмір вікна; тримає його в межах полотна й не менше 2%. */
+export function setSlot(project: Project, patch: Partial<Rect>): Project {
+  const s = { ...project.stage.slot, ...patch };
+  const w = Math.min(1, Math.max(0.02, s.w)), h = Math.min(1, Math.max(0.02, s.h));
+  const slot = { w, h, x: Math.min(1 - w, Math.max(0, s.x)), y: Math.min(1 - h, Math.max(0, s.y)) };
+  return { ...project, stage: { ...project.stage, slot } };
+}
+
+export function setStageStyle(project: Project, patch: Partial<Pick<Stage, 'radius' | 'shadow'>>): Project {
+  return { ...project, stage: { ...project.stage, ...patch } };
+}
+
+/** Підганяє вікно під пропорції картинки (imgW × imgH), лишаючи ширину; якщо не влазить — зменшує. */
+export function fitSlotToImage(project: Project, imgW: number, imgH: number): Project {
+  const { w: cw, h: ch } = project.canvas;
+  const slot = project.stage.slot;
+  let wPx = slot.w * cw;
+  let hPx = (wPx * imgH) / imgW;
+  const maxH = (1 - slot.y) * ch;
+  if (hPx > maxH) { hPx = maxH; wPx = (hPx * imgW) / imgH; }
+  return setSlot(project, { w: wPx / cw, h: hPx / ch });
 }

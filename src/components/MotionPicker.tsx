@@ -28,6 +28,7 @@ export function MotionPicker({ value, onChange }: { value: MotionType; onChange:
           <span>{LABELS[t]}</span>
         </button>
       ))}
+      {Array.from({ length: (4 - (ORDER.length % 4)) % 4 }, (_, i) => <span key={`f${i}`} className="fill" />)}
     </div>
   );
 }

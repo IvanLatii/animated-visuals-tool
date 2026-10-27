@@ -16,7 +16,7 @@ import type { Project } from './model/types';
 import { parseProject, projectFileName, serializeProject } from './model/projectFile';
 import { canPick, downloadText, isAbort, pickOpenHandle, pickSaveHandle, writeHandle, type FileHandle } from './projectIO';
 import { buildTimeline, loadAssets, projectDuration, type Assets } from './render/renderScene';
-import { addFrames, moveFrame, newFrame, removeFrame, replaceFrameImage, setFrameDuration, setProjectName } from './state/projectActions';
+import { addFrames, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
 
@@ -35,6 +35,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [editSlot, setEditSlot] = useState(false);
   const [exportSettings, setExportSettings] = useState<ExportSettings>(DEFAULT_SETTINGS);
   const openRef = useRef<HTMLInputElement>(null);
   const fileHandle = useRef<FileHandle | null>(null); // файл, у який ⌘S зберігає мовчки
@@ -43,6 +44,9 @@ export function App() {
   const tRef = useRef(0);
 
   const duration = projectDuration(project);
+  const selectedFrame = project.frames.find((f) => f.id === selectedId);
+  const selImg = selectedFrame ? assets.get(selectedFrame.layers[0].src) : undefined;
+  const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
 
   const seek = useCallback((time: number) => { tRef.current = time; setT(time); }, []);
 
@@ -86,6 +90,25 @@ export function App() {
     setNotice(text);
     setTimeout(() => setNotice(null), 2500);
   }, []);
+
+  // Фон і накладка. Фон одразу підганяє полотно під свій розмір (з Figma зазвичай готовий розмір), далі розмір можна змінити.
+  const pickStageImage = useCallback(async (kind: 'background' | 'overlay', file: File) => {
+    if (!file.type.startsWith('image/')) { setError('That is not an image. Use PNG, JPG or WebP.'); return; }
+    try {
+      const src = await fileToDataUrl(file);
+      const img = await loadImage(src);
+      setAssets((prev) => new Map(prev).set(src, img));
+      const k = Math.min(1, 4096 / Math.max(img.naturalWidth, img.naturalHeight));
+      setProject((p) => {
+        const next = setStageImage(p, kind, src);
+        return kind === 'background' ? setCanvasSize(next, img.naturalWidth * k, img.naturalHeight * k) : next;
+      });
+      setError(null);
+      if (kind === 'background') flash(`Canvas set to ${Math.round(img.naturalWidth * k)}×${Math.round(img.naturalHeight * k)} to match the background`);
+    } catch {
+      setError(`Could not open "${file.name}".`);
+    }
+  }, [flash]);
 
   /** Перше збереження (і «Save as») питає місце й ім'я, далі ⌘S мовчки перезаписує той самий файл. */
   const saveProject = useCallback(async (asNew = false) => {
@@ -229,7 +252,7 @@ export function App() {
       <Resizer axis="x" label="Left panel width" value={layout.left} min={LIMITS.left[0]} max={LIMITS.left[1]}
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">
-        <Preview project={project} assets={assets} t={t} playing={playing} loop={loop} duration={duration}
+        <Preview project={project} assets={assets} t={t} editSlot={editSlot} onSlot={(r) => setProject((p) => setSlot(p, r))} playing={playing} loop={loop} duration={duration}
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
@@ -240,6 +263,7 @@ export function App() {
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
       <Sidebar project={project} selectedId={selectedId} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
+        stage={{ selectedImage, editSlot, onEditSlot: setEditSlot, onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => setProject((p) => setStageImage(p, k, undefined)) }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />
       <ExportPanel project={project} assets={assets} t={t} settings={exportSettings} onSettings={setExportSettings}
         open={exportOpen} onClose={() => setExportOpen(false)} />

@@ -66,6 +66,22 @@ export interface SafeZone {
   note?: string;
 }
 
+export interface Rect { x: number; y: number; w: number; h: number } // частки полотна 0–1
+
+/** Сцена «бутербродом»: фон під усім, вікно з кадрами посередині, накладка зверху. */
+export interface Stage {
+  /** src картинки фону (data URL); не задано — лише колір. */
+  background?: string;
+  /** src накладки (PNG із прозорим отвором, рамка пристрою тощо). */
+  overlay?: string;
+  /** Де грають кадри. За замовчуванням — усе полотно. */
+  slot: Rect;
+  /** Радіус кутів вікна, частка ширини полотна. */
+  radius: number;
+  /** Тінь вікна 0–1. */
+  shadow: number;
+}
+
 export interface Project {
   version: 1;
   /** Назва проєкту: показується зверху й іде в ім'я файлу. */
@@ -78,6 +94,7 @@ export interface Project {
   };
   frames: Frame[];
   defaults: Defaults;
+  stage: Stage;
 }
 
 // Налаштування експорту. Експорт іде циклом по списку таких завдань.

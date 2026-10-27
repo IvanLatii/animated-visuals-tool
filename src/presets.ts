@@ -1,10 +1,12 @@
 import type { ExportSettings } from './export/presets';
-import type { Defaults, Project } from './model/types';
+import type { Defaults, Project, Stage } from './model/types';
 
 // Пресет — налаштування без картинок і кадрів: формат, тло, safe-зони, значення за замовчуванням (рух, перехід, криві, fit, тривалість) та режим експорту.
 export interface PresetData {
   canvas: Pick<Project['canvas'], 'w' | 'h' | 'preset' | 'background' | 'safeZones'>;
   defaults: Defaults;
+  /** Геометрія вікна вмісту (без картинок): зручно для шаблонів під Figma-фон. */
+  stage?: Pick<Stage, 'slot' | 'radius' | 'shadow'>;
   export: ExportSettings;
 }
 export interface Preset { id: string; name: string; data: PresetData }
@@ -31,14 +33,14 @@ export function makePreset(name: string, project: Project, settings: ExportSetti
   const { w, h, preset, background, safeZones } = project.canvas;
   return {
     id: crypto.randomUUID(), name,
-    data: structuredClone({ canvas: { w, h, preset, background, safeZones }, defaults: project.defaults, export: settings }),
+    data: structuredClone({ canvas: { w, h, preset, background, safeZones }, defaults: project.defaults, stage: { slot: project.stage.slot, radius: project.stage.radius, shadow: project.stage.shadow }, export: settings }),
   };
 }
 
 /** Кадри, назва проєкту й перевизначення кадрів лишаються як є. */
 export function applyPreset(project: Project, preset: Preset): Project {
   const d = structuredClone(preset.data);
-  return { ...project, canvas: { ...project.canvas, ...d.canvas }, defaults: d.defaults };
+  return { ...project, canvas: { ...project.canvas, ...d.canvas }, defaults: d.defaults, stage: d.stage ? { ...project.stage, ...d.stage } : project.stage };
 }
 
 /** Додає або оновлює пресет за назвою. */

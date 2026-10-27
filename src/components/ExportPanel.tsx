@@ -48,7 +48,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
 
   // Оцінка розміру. MP4 рахується миттєво, GIF — коротким пробним кодуванням (з паузою, щоб не рахувати на кожен рух повзунка).
   const gifKey = open && job.format === 'gif' && !empty && !tooBig
-    ? JSON.stringify([job, duration, project.canvas.w, project.canvas.h, project.canvas.background, project.defaults, project.frames.map((f) => [f.id, f.duration, f.motion, f.transitionOut, f.layers.map((l) => l.fit)])])
+    ? JSON.stringify([job, duration, project.canvas.w, project.canvas.h, project.canvas.background, project.stage.slot, project.stage.radius, project.stage.shadow, project.stage.background?.length, project.stage.overlay?.length, project.defaults, project.frames.map((f) => [f.id, f.duration, f.motion, f.transitionOut, f.layers.map((l) => l.fit)])])
     : null;
   useEffect(() => {
     if (!gifKey || busy) return;
