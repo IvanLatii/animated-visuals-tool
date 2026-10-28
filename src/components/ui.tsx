@@ -53,15 +53,17 @@ export function NumberField({ value, onChange, min, max, step = 1, decimals = 0,
   { value: number; onChange: (v: number) => void; min: number; max: number; step?: number; decimals?: number; width?: number; mixed?: boolean }) {
   // Поки друкуємо, число може бути неповним, тому тримаємо текст окремо й віддаємо лише коректне.
   const [draft, setDraft] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false); // чернетку показуємо лише поки друкуємо; інакше поле завжди відображає актуальне значення (скасування, масові зміни)
   return (
     <input className="num" type="number" min={min} max={max} step={step} style={width ? { width } : undefined}
-      value={draft ?? (mixed ? '' : value.toFixed(decimals))} placeholder={mixed ? 'mixed' : undefined}
+      value={focused && draft !== null ? draft : mixed ? '' : value.toFixed(decimals)} placeholder={mixed ? 'mixed' : undefined}
       onChange={(e) => {
         setDraft(e.target.value);
         const v = e.target.valueAsNumber;
         if (Number.isFinite(v) && v >= min && v <= max) onChange(v);
       }}
-      onBlur={() => setDraft(null)} />
+      onFocus={() => setFocused(true)}
+      onBlur={() => { setFocused(false); setDraft(null); }} />
   );
 }
 

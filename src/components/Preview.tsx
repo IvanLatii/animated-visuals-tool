@@ -12,6 +12,10 @@ interface Props {
   editImage: boolean;
   selection: string[];
   keep: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onPatches: React.ComponentProps<typeof ImageEditor>['onPatches'];
   playing: boolean;
   loop: boolean;
@@ -28,7 +32,7 @@ const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 interface View { zoom: number; x: number; y: number } // zoom = множник відносно «вмістити», x/y — зсув у пікселях екрана
 
-export function Preview({ project, assets, t, editSlot, onSlot, editImage, selection, keep, onPatches, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, editSlot, onSlot, editImage, selection, keep, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
@@ -183,6 +187,14 @@ export function Preview({ project, assets, t, editSlot, onSlot, editImage, selec
           <span className="cap bottom">{presetLabel} · {w}×{h} · {pct}%</span>
         </div>
         {empty && <div className="empty">Add images to see the preview</div>}
+        <div className="zoombar histbar" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+          <button disabled={!canUndo} onClick={onUndo} aria-label="Undo" data-tip="Undo · ⌘ Z">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M6 3L2.5 6.5 6 10M3 6.5h6.5a4 4 0 0 1 0 8H7" /></svg>
+          </button>
+          <button disabled={!canRedo} onClick={onRedo} aria-label="Redo" data-tip="Redo · ⌘ ⇧ Z">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M10 3l3.5 3.5L10 10M13 6.5H6.5a4 4 0 0 0 0 8H9" /></svg>
+          </button>
+        </div>
         <div className="zoombar" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
           <button onClick={() => zoomBy(0.8)} aria-label="Zoom out" data-tip="Zoom out · ⌘ −">−</button>
           <button className="pct" data-tip="Actual size · ⌘ 1" onClick={() => zoomTo(1 / fit)}>{pct}%</button>

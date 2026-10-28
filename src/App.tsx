@@ -6,6 +6,7 @@ import { FrameList } from './components/FrameList';
 import { Preview } from './components/Preview';
 import { Resizer } from './components/Resizer';
 import { useStoredOpen } from './components/ui';
+import { useHistory } from './useHistory';
 import { Seg } from './components/ui';
 import { DEFAULT_LAYOUT, LIMITS, loadLayout, saveLayout, type Layout } from './layout';
 import { Timeline } from './components/Timeline';
@@ -52,6 +53,11 @@ export function App() {
   const tRef = useRef(0);
 
   const duration = projectDuration(project);
+  const applyProject = useCallback((p: Project) => {
+    setProject(p);
+    setSelection((s) => s.filter((id) => p.frames.some((f) => f.id === id))); // виділення не вказує на кадри, яких уже нема
+  }, []);
+  const { undo, redo, canUndo, canRedo } = useHistory(project, applyProject, 10);
   const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); anchor.current = id; }, []);
   const selectedFrame = project.frames.find((f) => f.id === selectedId);
   const selImg = selectedFrame ? assets.get(selectedFrame.layers[0].src) : undefined;
@@ -161,7 +167,7 @@ export function App() {
       const parsed = parseProject(await file.text());
       fileHandle.current = handle;
       const loaded = await loadAssets(parsed);
-      setAssets(loaded);
+      setAssets((prev) => new Map([...prev, ...loaded])); // старі зображення лишаємо, щоб працювало скасування
       setProject(parsed);
       selectOne(parsed.frames[0]?.id ?? null);
       setPlaying(false);
@@ -220,6 +226,11 @@ export function App() {
     };
     const onDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !isTyping(e.target, true) && (key === 'z' || key === 'y')) {
+        e.preventDefault();
+        if (key === 'y' || e.shiftKey) redo(); else undo();
+        return;
+      }
       if ((e.metaKey || e.ctrlKey) && !e.altKey && (key === 's' || key === 'o')) {
         e.preventDefault();
         if (key === 's') void saveProject(e.shiftKey); else void requestOpen();
@@ -244,7 +255,7 @@ export function App() {
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen]);
+  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen, undo, redo]);
 
   return (
     <div className={`app ${dropping ? 'dropping' : ''}`}
@@ -286,7 +297,8 @@ export function App() {
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">
         <Preview project={project} assets={assets} t={t} editSlot={editSlot} onSlot={(r) => setProject((p) => setSlot(p, r))}
-          editImage={editImage} selection={selection} keep={keepProportions} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches))} playing={playing} loop={loop} duration={duration}
+          editImage={editImage} selection={selection} keep={keepProportions} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches))}
+          canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} playing={playing} loop={loop} duration={duration}
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
@@ -297,7 +309,7 @@ export function App() {
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
       <Sidebar project={project} selection={selection} assets={assets} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
-        transform={{ keep: keepProportions, onKeep: setKeepProportions, editImage, onEditImage: setEditImage }}
+        transform={{ keep: keepProportions, onKeep: setKeepProportions, editImage, onEditImage: setEditImage, onSelectAll: () => setSelection(project.frames.map((f) => f.id)) }}
         stage={{ selectedImage, editSlot, onEditSlot: setEditSlot, onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => setProject((p) => setStageImage(p, k, undefined)) }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />
       <ExportPanel project={project} assets={assets} t={t} settings={exportSettings} onSettings={setExportSettings}

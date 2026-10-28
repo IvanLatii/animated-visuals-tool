@@ -2,7 +2,7 @@ import type { Project } from '../model/types';
 import { alignedOffset, type AlignHow } from '../render/layerGeometry';
 import type { Assets } from '../render/renderScene';
 import * as A from '../state/projectActions';
-import { Row, Section, NumberField } from './ui';
+import { Row, Section, NumberField, Seg } from './ui';
 
 interface Props {
   project: Project;
@@ -13,6 +13,7 @@ interface Props {
   onKeep: (v: boolean) => void;
   editImage: boolean;
   onEditImage: (v: boolean) => void;
+  onSelectAll: () => void;
 }
 
 const ALIGN: { how: AlignHow; label: string; path: string }[] = [
@@ -30,11 +31,20 @@ function common(values: number[]): { value: number; mixed: boolean } {
   return { value: first, mixed: values.some((v) => Math.abs(v - first) > 1e-6) };
 }
 
-export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep, editImage, onEditImage }: Props) {
+export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep, editImage, onEditImage, onSelectAll }: Props) {
   const frames = project.frames.filter((f) => selection.includes(f.id));
-  if (frames.length === 0) return null;
+  if (frames.length === 0) {
+    return (
+      <Section id="selection" title="Selected image">
+        <p className="hint">Select images to resize, rotate and align them.</p>
+        <button disabled={project.frames.length === 0} onClick={onSelectAll}>Select all images</button>
+      </Section>
+    );
+  }
   const layers = frames.map((f) => f.layers[0]).filter(Boolean);
   const ids = frames.map((f) => f.id);
+  const fits = new Set(layers.map((l) => l.fit ?? project.defaults.layerFit));
+  const fitValue = fits.size === 1 ? [...fits][0] : ''; // різні — жоден не підсвічено
   const sx = common(layers.map((l) => (l.scaleX ?? 1) * 100));
   const sy = common(layers.map((l) => (l.scaleY ?? 1) * 100));
   const dx = common(layers.map((l) => (l.dx ?? 0) * 100));
@@ -51,6 +61,8 @@ export function SelectionPanel({ project, selection, assets, onChange, keep, onK
 
   return (
     <Section id="selection" title={frames.length > 1 ? `Selected images (${frames.length})` : 'Selected image'}>
+      <Seg label="Fit mode" value={fitValue} onChange={(v) => onChange((p) => ids.reduce((acc, id) => A.setFrameFit(acc, id, v as 'fit' | 'fill'), p))}
+        options={[{ id: 'fit', label: 'Fit' }, { id: 'fill', label: 'Fill' }]} />
       <Row label="Edit on canvas"><input type="checkbox" checked={editImage} onChange={(e) => onEditImage(e.target.checked)} /></Row>
       <Row label="Width, %"><NumberField value={sx.value} mixed={sx.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'x', v / 100, keep))} /></Row>
       <Row label="Height, %"><NumberField value={sy.value} mixed={sy.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'y', v / 100, keep))} /></Row>

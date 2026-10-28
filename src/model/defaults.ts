@@ -38,7 +38,7 @@ export const DEFAULT_TRANSITION: Transition = { type: 'crossfade', duration: 0.3
 
 export const DEFAULTS: Defaults = {
   frameDuration: 1.0,
-  layerFit: 'fill',
+  layerFit: 'fit', // зображення видно цілком, без обрізання; «Fill» вмикається окремо
   motion: DEFAULT_MOTION,
   transitionOut: DEFAULT_TRANSITION,
 };

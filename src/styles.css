@@ -312,3 +312,8 @@ button.icon.danger:hover:not(:disabled) { border-color: var(--danger); color: va
 .img-edit .hd { position: absolute; width: 9px; height: 9px; background: #fff; border: 1px solid var(--accent); margin: -5px 0 0 -5px; }
 .img-edit::before { content: ""; position: absolute; left: 50%; top: -24px; width: 1px; height: 24px; background: var(--accent); pointer-events: none; }
 .hd-rot { left: 50%; top: -24px; cursor: grab; border-radius: 50%; }
+
+/* --- Скасувати / повторити (ліворуч угорі сцени) --- */
+.histbar { right: auto; left: 12px; }
+.histbar button { padding: 0; width: var(--h); }
+.histbar button:disabled { opacity: .35; }
