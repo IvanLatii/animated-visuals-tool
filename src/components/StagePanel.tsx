@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { setSlot, setStageStyle, fitSlotToImage } from '../state/projectActions';
 import type { Project } from '../model/types';
 import { Section, NumberField, Row, SliderRow, CheckRow } from './ui';
@@ -9,24 +8,10 @@ interface Props {
   selectedImage: { w: number; h: number } | null;
   editSlot: boolean;
   onEditSlot: (v: boolean) => void;
-  onPickImage: (kind: 'background' | 'overlay', file: File) => void;
-  onClearImage: (kind: 'background' | 'overlay') => void;
   onChange: (fn: (p: Project) => Project) => void;
 }
 
-function ImageRow({ label, src, onPick, onClear }: { label: string; src?: string; onPick: (f: File) => void; onClear: () => void }) {
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <Row label={label}>
-      {src && <img className="mini" src={src} alt="" />}
-      <button onClick={() => ref.current?.click()}>{src ? 'Replace' : 'Choose'}</button>
-      {src && <button className="icon danger" aria-label={`Remove ${label.toLowerCase()}`} onClick={onClear}>×</button>}
-      <input ref={ref} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''; }} />
-    </Row>
-  );
-}
-
-export function StagePanel({ project, selectedImage, editSlot, onEditSlot, onPickImage, onClearImage, onChange }: Props) {
+export function StagePanel({ project, selectedImage, editSlot, onEditSlot, onChange }: Props) {
   const { stage } = project;
   const pct = (v: number) => Math.round(v * 1000) / 10;
   const field = (label: string, key: 'x' | 'y' | 'w' | 'h') => (
@@ -37,10 +22,6 @@ export function StagePanel({ project, selectedImage, editSlot, onEditSlot, onPic
   );
   return (
     <>
-      <Section id="layers" title="Background & overlay">
-        <ImageRow label="Background" src={stage.background} onPick={(f) => onPickImage('background', f)} onClear={() => onClearImage('background')} />
-        <ImageRow label="Overlay" src={stage.overlay} onPick={(f) => onPickImage('overlay', f)} onClear={() => onClearImage('overlay')} />
-      </Section>
       <Section id="slot" title="Content area">
         <CheckRow label="Edit on canvas" checked={editSlot} onChange={onEditSlot} />
         {field('X, %', 'x')}

@@ -94,7 +94,7 @@ progress::-webkit-progress-value { background: var(--accent); }
 /* --- Кадри --- */
 .panel { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 .panel > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.frames ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.frames-block ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .frame { display: grid; grid-template-columns: 14px 44px minmax(0, 1fr) var(--h); align-items: center; gap: 8px; padding: 4px; border: 1px solid var(--line); cursor: grab; }
 .frame.selected { border-color: var(--ink); background: var(--bg); }
 .frame.drop-target { border-top: 2px solid var(--accent); }
@@ -244,7 +244,7 @@ input.txt:hover, input.txt:focus { background: var(--bg); }
 
 /* --- Ліва колонка, плитки руху, замок пропорцій --- */
 .left { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--panel); }
-.left .frames { flex: 1; min-height: 0; }
+.left .layers { flex: 1; min-height: 0; }
 .left-foot { flex: none; height: var(--bar); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-top: 1px solid var(--line); color: var(--muted); }
 .left-foot .seg { width: auto; }
 .left-foot .seg button { flex: none; padding: 0 10px; }
@@ -330,3 +330,14 @@ button.icon.danger:hover:not(:disabled) { border-color: var(--danger); color: va
 .left-foot .seg { height: 100%; border: none; }
 .left-foot .seg button { padding: 0 14px; border-right: none; border-left: 1px solid var(--line); }
 .left-foot .seg button:first-child { border-left: 1px solid var(--line); }
+
+/* --- Layers (ліва панель) і Inspector --- */
+.layers { gap: 8px; }
+.frames-block { display: flex; flex-direction: column; gap: 12px; }
+.frames-block > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.lrow { grid-template-columns: 44px minmax(0, 1fr) auto; padding: 4px 4px 4px 8px; cursor: pointer; }
+.lrow .acts.row { flex-direction: row; align-self: center; gap: 0; }
+.lrow .acts.row .icon { height: var(--h); }
+.thumb.empty { width: 44px; height: 44px; border: 1px dashed var(--line-strong); display: block; }
+.layer-preview { background: var(--bg); background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 14px 14px; padding: 12px; display: flex; justify-content: center; border: 1px solid var(--line); }
+.layer-preview img { max-width: 100%; max-height: 160px; display: block; }

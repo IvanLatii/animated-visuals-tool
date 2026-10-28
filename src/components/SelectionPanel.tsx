@@ -11,7 +11,6 @@ interface Props {
   onChange: (fn: (p: Project) => Project) => void;
   keep: boolean;
   onKeep: (v: boolean) => void;
-  onSelectAll: () => void;
 }
 
 const ALIGN: { how: AlignHow; label: string; path: string }[] = [
@@ -29,16 +28,9 @@ function common(values: number[]): { value: number; mixed: boolean } {
   return { value: first, mixed: values.some((v) => Math.abs(v - first) > 1e-6) };
 }
 
-export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep, onSelectAll }: Props) {
+export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep }: Props) {
   const frames = project.frames.filter((f) => selection.includes(f.id));
-  if (frames.length === 0) {
-    return (
-      <Section id="selection" title="Selected image">
-        <p className="hint">Select images to resize, rotate and align them.</p>
-        <button disabled={project.frames.length === 0} onClick={onSelectAll}>Select all images</button>
-      </Section>
-    );
-  }
+  if (frames.length === 0) return null;
   const layers = frames.map((f) => f.layers[0]).filter(Boolean);
   const ids = frames.map((f) => f.id);
   const fits = new Set(layers.map((l) => l.fit ?? project.defaults.layerFit));

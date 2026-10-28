@@ -1,21 +1,21 @@
-import { useState } from 'react';
 import { resolveFrame } from '../model/defaults';
 import type { Project } from '../model/types';
 import * as A from '../state/projectActions';
 import { MOTION_PROFILES } from '../model/profiles';
 import { MotionControls, TransitionControls } from './AnimationControls';
 import { FitControls } from './FitControls';
-import { NumberField, Row, Section, SelectRow, Seg, SliderRow } from './ui';
+import { NumberField, Row, Section, SelectRow, SliderRow } from './ui';
 
 interface Props {
   project: Project;
   selection: string[];
+  /** project — значення за замовчуванням для всіх кадрів; frame — зміни лише вибраних. */
+  scope: 'project' | 'frame';
   duration: number;
   onChange: (fn: (p: Project) => Project) => void;
 }
 
-export function AnimatePanel({ project, selection, duration, onChange }: Props) {
-  const [scope, setScope] = useState<'project' | 'frame'>('project');
+export function AnimatePanel({ project, selection, scope, duration, onChange }: Props) {
   const selectedId = selection[selection.length - 1] ?? null; // для показу беремо останній виділений, зміни йдуть на всіх виділених
   const each = (fn: (p: Project, id: string) => Project) => onChange((pr) => selection.reduce(fn, pr));
   const index = project.frames.findIndex((f) => f.id === selectedId);
@@ -25,20 +25,16 @@ export function AnimatePanel({ project, selection, duration, onChange }: Props) 
 
   return (
     <>
-      <Section id="scope" title="Apply to">
-        <Seg label="Apply to" value={editFrame ? 'frame' : 'project'} onChange={setScope} options={[
-          { id: 'project', label: 'Whole project' },
-          { id: 'frame', label: selection.length > 1 ? `Selected (${selection.length})` : frame ? `Frame ${index + 1}` : 'Frame', disabled: !frame },
-        ]} />
-        {!editFrame && project.frames.length > 0 && (
+      {!editFrame && project.frames.length > 0 && (
+        <Section id="timing" title="Timing">
           <Row label="Total duration, s">
             <NumberField value={duration} min={project.frames.length * 0.1} max={project.frames.length * 30} step={0.5} decimals={1}
               onChange={(v) => onChange((pr) => A.scaleTotalDuration(pr, v))} />
           </Row>
-        )}
-      </Section>
+        </Section>
+      )}
 
-      <Section id="anim" title="Animation">
+      <Section id="anim" title={editFrame && selection.length > 1 ? `Animation · ${selection.length} selected` : editFrame ? "Animation · selected" : "Default animation"}>
         {editFrame ? (
           <>
             <SliderRow label="Frame duration, s" value={rf.duration} min={0.1} max={10} step={0.1} decimals={1}

@@ -81,8 +81,10 @@ export interface Rect { x: number; y: number; w: number; h: number } // част
 export interface Stage {
   /** src картинки фону (data URL); не задано — лише колір. */
   background?: string;
+  backgroundName?: string;
   /** src накладки (PNG із прозорим отвором, рамка пристрою тощо). */
   overlay?: string;
+  overlayName?: string;
   /** Де грають кадри. За замовчуванням — усе полотно. */
   slot: Rect;
   /** Радіус кутів вікна, частка ширини полотна. */

@@ -7,7 +7,7 @@ interface Props {
   project: Project;
   selection: string[];
   onSelect: (id: string, mode: 'single' | 'toggle' | 'range') => void;
-  onDeselect: () => void;
+  onSelectAll: () => void;
   onRemove: (id: string) => void;
   onMove: (from: number, to: number) => void;
   onPickFiles: (files: FileList) => void;
@@ -15,7 +15,7 @@ interface Props {
   onClear: () => void;
 }
 
-export function FrameList({ project, selection, onSelect, onDeselect, onRemove, onMove, onPickFiles, onReplace, onClear }: Props) {
+export function FrameList({ project, selection, onSelect, onSelectAll, onRemove, onMove, onPickFiles, onReplace, onClear }: Props) {
   const addRef = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
   const replaceId = useRef<string | null>(null);
@@ -23,10 +23,11 @@ export function FrameList({ project, selection, onSelect, onDeselect, onRemove, 
   const [dragOver, setDragOver] = useState<number | null>(null);
 
   return (
-    <section className="panel frames" onClick={(e) => { if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'OL') onDeselect(); }}>
+    <div className="frames-block">
       <header>
         <h2>Frames</h2>
         <div className="head-actions">
+          {project.frames.length > 1 && <button className="link" onClick={onSelectAll}>Select all</button>}
           <button className="icon danger" aria-label="Delete all frames" data-tip="Delete all frames" data-tip-pos="left"
             disabled={project.frames.length === 0} onClick={onClear}>
             <TrashIcon />
@@ -84,6 +85,6 @@ export function FrameList({ project, selection, onSelect, onDeselect, onRemove, 
           })}
         </ol>
       )}
-    </section>
+    </div>
   );
 }

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { fileToDataUrl, loadImage } from './assets';
 import { ExportPanel } from './components/ExportPanel';
-import { Sidebar } from './components/Sidebar';
-import { FrameList } from './components/FrameList';
+import { Sidebar, type Target } from './components/Sidebar';
+import { LayersPanel } from './components/LayersPanel';
 import { Preview } from './components/Preview';
 import { Resizer } from './components/Resizer';
 import { useStoredOpen } from './components/ui';
@@ -54,7 +54,10 @@ export function App() {
     setSelection((s) => s.filter((id) => p.frames.some((f) => f.id === id))); // виділення не вказує на кадри, яких уже нема
   }, []);
   const { undo, redo, canUndo, canRedo } = useHistory(project, applyProject, 10);
-  const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); anchor.current = id; }, []);
+  const [layerSel, setLayerSel] = useState<'background' | 'overlay' | null>(null); // вибраний шар-картинка в Layers (фон або накладка)
+  const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); setLayerSel(null); anchor.current = id; }, []);
+  const selectLayer = useCallback((kind: 'background' | 'overlay') => { setSelection([]); setLayerSel(kind); anchor.current = null; }, []);
+  const target: Target = selection.length > 0 ? 'frames' : layerSel ?? 'project'; // що показує Inspector
   const selectedFrame = project.frames.find((f) => f.id === selectedId);
   const selImg = selectedFrame ? assets.get(selectedFrame.layers[0].src) : undefined;
   const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
@@ -70,6 +73,7 @@ export function App() {
     }
     const order = project.frames.map((f) => f.id);
     if (mode === 'toggle') {
+      setLayerSel(null);
       setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
       anchor.current = id;
       return;
@@ -77,6 +81,7 @@ export function App() {
     const a = order.indexOf(anchor.current ?? selectedId ?? id), b = order.indexOf(id);
     const [lo, hi] = a <= b ? [a, b] : [b, a];
     const range = order.slice(lo, hi + 1);
+    setLayerSel(null);
     setSelection(a > b ? range.reverse() : range); // натиснутий кадр стає останнім — основним
   }, [project, selectedId, selectOne, seek]);
 
@@ -130,7 +135,7 @@ export function App() {
       setAssets((prev) => new Map(prev).set(src, img));
       const k = Math.min(1, 4096 / Math.max(img.naturalWidth, img.naturalHeight));
       setProject((p) => {
-        const next = setStageImage(p, kind, src);
+        const next = setStageImage(p, kind, src, file.name.replace(/\.[^.]+$/, ''));
         return kind === 'background' ? setCanvasSize(next, img.naturalWidth * k, img.naturalHeight * k) : next;
       });
       setError(null);
@@ -234,6 +239,7 @@ export function App() {
       }
       if ((e.metaKey || e.ctrlKey) && !e.altKey && key === 'a' && !isTyping(e.target, true) && !exportOpen) {
         e.preventDefault();
+        setLayerSel(null);
         setSelection(project.frames.map((f) => f.id));
         return;
       }
@@ -277,13 +283,16 @@ export function App() {
         <button className="primary export-btn" data-tip="Make the final MP4, GIF or PNG" data-tip-pos="left" onClick={() => setExportOpen(true)}>Export</button>
       </header>
       <div className="left">
-      <FrameList project={project} selection={selection}
-        onSelect={selectFrame} onDeselect={() => selectOne(null)}
+      <LayersPanel project={project} selection={selection} layerSel={layerSel}
+        onSelectFrame={selectFrame} onSelectLayer={selectLayer} onDeselect={() => selectOne(null)}
+        onSelectAll={() => { setLayerSel(null); setSelection(project.frames.map((f) => f.id)); }}
         onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelection((s) => s.filter((x) => x !== id)); }}
         onMove={(from, to) => setProject((p) => moveFrame(p, from, to))}
         onPickFiles={(files) => void addFiles(files)}
         onReplace={(id, file) => void replaceFile(id, file)}
-        onClear={() => { setProject((p) => ({ ...p, frames: [] })); selectOne(null); setPlaying(false); seek(0); }} />
+        onClear={() => { setProject((p) => ({ ...p, frames: [] })); selectOne(null); setPlaying(false); seek(0); }}
+        onPickImage={(k, f) => void pickStageImage(k, f)}
+        onClearImage={(k) => { setProject((p) => setStageImage(p, k, undefined)); setLayerSel(null); }} />
         <div className="left-foot">
           <span>Theme</span>
           <Seg label="Theme" value={theme} onChange={setTheme} options={THEME_OPTIONS} />
@@ -303,10 +312,11 @@ export function App() {
       </div>
       <Resizer axis="x" invert label="Right panel width" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
-      <Sidebar project={project} selection={selection} assets={assets} duration={duration}
+      <Sidebar project={project} target={target} selection={selection} assets={assets} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
-        transform={{ keep: keepProportions, onKeep: setKeepProportions, onSelectAll: () => setSelection(project.frames.map((f) => f.id)) }}
-        stage={{ selectedImage, editSlot, onEditSlot: setEditSlot, onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => setProject((p) => setStageImage(p, k, undefined)) }}
+        keep={keepProportions} onKeep={setKeepProportions}
+        slot={{ selectedImage, editSlot, onEditSlot: setEditSlot }}
+        layer={{ onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => { setProject((p) => setStageImage(p, k, undefined)); setLayerSel(null); } }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />
       <ExportPanel project={project} assets={assets} t={t} settings={exportSettings} onSettings={setExportSettings}
         open={exportOpen} onClose={() => setExportOpen(false)} />

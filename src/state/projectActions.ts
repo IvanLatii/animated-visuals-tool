@@ -149,8 +149,8 @@ export function scaleTotalDuration(project: Project, total: number): Project {
 }
 
 // --- Сцена: фон, накладка, вікно вмісту ---
-export function setStageImage(project: Project, kind: 'background' | 'overlay', src: string | undefined): Project {
-  return { ...project, stage: { ...project.stage, [kind]: src } };
+export function setStageImage(project: Project, kind: 'background' | 'overlay', src: string | undefined, name?: string): Project {
+  return { ...project, stage: { ...project.stage, [kind]: src, [`${kind}Name`]: src ? name : undefined } };
 }
 
 /** Рухає або змінює розмір вікна; тримає його в межах полотна й не менше 2%. */
