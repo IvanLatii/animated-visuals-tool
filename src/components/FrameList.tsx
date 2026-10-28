@@ -5,8 +5,8 @@ import { TrashIcon } from './icons';
 
 interface Props {
   project: Project;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  selection: string[];
+  onSelect: (id: string, mode: 'single' | 'toggle' | 'range') => void;
   onRemove: (id: string) => void;
   onMove: (from: number, to: number) => void;
   onPickFiles: (files: FileList) => void;
@@ -14,7 +14,7 @@ interface Props {
   onClear: () => void;
 }
 
-export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onPickFiles, onReplace, onClear }: Props) {
+export function FrameList({ project, selection, onSelect, onRemove, onMove, onPickFiles, onReplace, onClear }: Props) {
   const addRef = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
   const replaceId = useRef<string | null>(null);
@@ -48,10 +48,10 @@ export function FrameList({ project, selectedId, onSelect, onRemove, onMove, onP
         <ol>
           {project.frames.map((frame, i) => {
             const rf = resolveFrame(project, frame);
-            const cls = ['frame', frame.id === selectedId ? 'selected' : '', dragOver === i && dragFrom !== null && dragFrom !== i ? 'drop-target' : ''].join(' ');
+            const cls = ['frame', selection.includes(frame.id) ? 'selected' : '', dragOver === i && dragFrom !== null && dragFrom !== i ? 'drop-target' : ''].join(' ');
             return (
               <li key={frame.id} className={cls} draggable
-                onClick={() => onSelect(frame.id)}
+                onClick={(e) => onSelect(frame.id, e.shiftKey ? 'range' : e.metaKey || e.ctrlKey ? 'toggle' : 'single')}
                 onDragStart={(e) => { setDragFrom(i); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); }}
                 onDragOver={(e) => { if (dragFrom !== null) { e.preventDefault(); setDragOver(i); } }}
                 onDrop={(e) => {

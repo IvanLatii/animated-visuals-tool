@@ -1,6 +1,6 @@
 import { CANVAS_PRESETS, imageLayer } from '../model/defaults';
 import type { MotionProfile } from '../model/profiles';
-import type { Frame, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
+import type { Frame, Layer, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
 
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
 
@@ -174,4 +174,41 @@ export function fitSlotToImage(project: Project, imgW: number, imgH: number): Pr
   const maxH = (1 - slot.y) * ch;
   if (hPx > maxH) { hPx = maxH; wPx = (hPx * imgW) / imgH; }
   return setSlot(project, { w: wPx / cw, h: hPx / ch });
+}
+
+// --- Перетворення виділених зображень ---
+type LayerPatch = Partial<Pick<Layer, 'scaleX' | 'scaleY' | 'dx' | 'dy' | 'rotation'>>;
+
+/** Застосовує fn до кожного шару кожного кадру з ids. */
+export function mapLayersOf(project: Project, ids: string[], fn: (layer: Layer, frame: Frame) => Layer): Project {
+  const set = new Set(ids);
+  return { ...project, frames: project.frames.map((f) => (set.has(f.id) ? { ...f, layers: f.layers.map((l) => fn(l, f)) } : f)) };
+}
+
+export function patchLayers(project: Project, ids: string[], patch: LayerPatch): Project {
+  return mapLayersOf(project, ids, (l) => ({ ...l, ...patch }));
+}
+
+/** Множник розміру від поточного (зберігає різницю між зображеннями). */
+export function scaleLayers(project: Project, ids: string[], factor: number): Project {
+  const clamp = (v: number) => Math.min(8, Math.max(0.05, v));
+  return mapLayersOf(project, ids, (l) => ({ ...l, scaleX: clamp((l.scaleX ?? 1) * factor), scaleY: clamp((l.scaleY ?? 1) * factor) }));
+}
+
+/** Ширина (або висота) задається числом; з увімкненим замком пропорцій друга сторона змінюється так само. */
+export function setLayerScale(project: Project, ids: string[], axis: 'x' | 'y', value: number, keepRatio: boolean): Project {
+  const v = Math.min(8, Math.max(0.05, value));
+  return mapLayersOf(project, ids, (l) => {
+    const sx = l.scaleX ?? 1, sy = l.scaleY ?? 1;
+    if (axis === 'x') return { ...l, scaleX: v, scaleY: keepRatio ? Math.min(8, Math.max(0.05, sy * (v / sx))) : sy };
+    return { ...l, scaleY: v, scaleX: keepRatio ? Math.min(8, Math.max(0.05, sx * (v / sy))) : sx };
+  });
+}
+
+export function resetLayerTransform(project: Project, ids: string[]): Project {
+  return mapLayersOf(project, ids, (l) => {
+    const { scaleX: _a, scaleY: _b, dx: _c, dy: _d, rotation: _e, ...rest } = l;
+    void _a; void _b; void _c; void _d; void _e;
+    return rest;
+  });
 }

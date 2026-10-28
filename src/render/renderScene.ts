@@ -1,4 +1,5 @@
 import { loadImage } from '../assets';
+import { baseBox } from './layerGeometry';
 import { resolveFrame, type ResolvedFrame } from '../model/defaults';
 import type { Layer, Project } from '../model/types';
 import { applyEasing } from './easing';
@@ -49,14 +50,15 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fi
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high'; // без цього повільний зум дрібно «мерехтить»
   const { w: W, h: H } = size;
-  const rx = layer.x * W, ry = layer.y * H, rw = layer.w * W, rh = layer.h * H;
-  const k = fit === 'fill'
-    ? Math.max(rw / img.width, rh / img.height)
-    : Math.min(rw / img.width, rh / img.height);
-  const w = img.width * k, h = img.height * k;
+  const b = baseBox(layer, fit, img, W, H);
   ctx.save();
-  ctx.beginPath(); ctx.rect(rx, ry, rw, rh); ctx.clip();
-  ctx.drawImage(img, rx + (rw - w) / 2, ry + (rh - h) / 2, w, h);
+  // Власне перетворення навколо центру шару; обрізання по прямокутнику шару рухається разом із зображенням.
+  ctx.translate(b.cx + (layer.dx ?? 0) * W, b.cy + (layer.dy ?? 0) * H);
+  ctx.rotate(((layer.rotation ?? 0) * Math.PI) / 180);
+  ctx.scale(layer.scaleX ?? 1, layer.scaleY ?? 1);
+  ctx.translate(-b.cx, -b.cy);
+  ctx.beginPath(); ctx.rect(b.rx, b.ry, b.rw, b.rh); ctx.clip();
+  ctx.drawImage(img, b.rx + (b.rw - b.w) / 2, b.ry + (b.rh - b.h) / 2, b.w, b.h);
   ctx.restore();
 }
 

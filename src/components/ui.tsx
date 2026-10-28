@@ -49,13 +49,13 @@ export function Hint({ children, tone }: { children: ReactNode; tone?: 'warn' })
   return <p className={`hint ${tone === 'warn' ? 'warn' : ''}`} role={tone === 'warn' ? 'alert' : undefined}>{children}</p>;
 }
 
-export function NumberField({ value, onChange, min, max, step = 1, decimals = 0, width }:
-  { value: number; onChange: (v: number) => void; min: number; max: number; step?: number; decimals?: number; width?: number }) {
+export function NumberField({ value, onChange, min, max, step = 1, decimals = 0, width, mixed }:
+  { value: number; onChange: (v: number) => void; min: number; max: number; step?: number; decimals?: number; width?: number; mixed?: boolean }) {
   // Поки друкуємо, число може бути неповним, тому тримаємо текст окремо й віддаємо лише коректне.
   const [draft, setDraft] = useState<string | null>(null);
   return (
     <input className="num" type="number" min={min} max={max} step={step} style={width ? { width } : undefined}
-      value={draft ?? value.toFixed(decimals)}
+      value={draft ?? (mixed ? '' : value.toFixed(decimals))} placeholder={mixed ? 'mixed' : undefined}
       onChange={(e) => {
         setDraft(e.target.value);
         const v = e.target.valueAsNumber;

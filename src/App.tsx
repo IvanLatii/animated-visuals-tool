@@ -27,7 +27,9 @@ const isTyping = (t: EventTarget | null, strict = false) => t instanceof HTMLEle
 export function App() {
   const [project, setProject] = useState<Project>(() => newProject('1:1'));
   const [assets, setAssets] = useState<Assets>(() => new Map());
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<string[]>([]); // виділені кадри; останній — «основний»
+  const anchor = useRef<string | null>(null); // від чого рахується діапазон Shift
+  const selectedId = selection[selection.length - 1] ?? null;
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(true);
@@ -44,6 +46,20 @@ export function App() {
   const tRef = useRef(0);
 
   const duration = projectDuration(project);
+  const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); anchor.current = id; }, []);
+  const selectFrame = useCallback((id: string, mode: 'single' | 'toggle' | 'range') => {
+    if (mode === 'single') { selectOne(id); return; }
+    const order = project.frames.map((f) => f.id);
+    if (mode === 'toggle') {
+      setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+      anchor.current = id;
+      return;
+    }
+    const a = order.indexOf(anchor.current ?? selectedId ?? id), b = order.indexOf(id);
+    const [lo, hi] = a <= b ? [a, b] : [b, a];
+    const range = order.slice(lo, hi + 1);
+    setSelection(a > b ? range.reverse() : range); // натиснутий кадр стає останнім — основним
+  }, [project.frames, selectedId, selectOne]);
   const selectedFrame = project.frames.find((f) => f.id === selectedId);
   const selImg = selectedFrame ? assets.get(selectedFrame.layers[0].src) : undefined;
   const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
@@ -70,8 +86,8 @@ export function App() {
       return next;
     });
     setProject((p) => addFrames(p, loaded.map((l) => l.frame)));
-    setSelectedId(loaded[loaded.length - 1].frame.id);
-  }, []);
+    selectOne(loaded[loaded.length - 1].frame.id);
+  }, [selectOne]);
 
   const replaceFile = useCallback(async (id: string, file: File) => {
     if (!file.type.startsWith('image/')) { setError('That is not an image. Use PNG, JPG or WebP.'); return; }
@@ -135,14 +151,14 @@ export function App() {
       const loaded = await loadAssets(parsed);
       setAssets(loaded);
       setProject(parsed);
-      setSelectedId(parsed.frames[0]?.id ?? null);
+      selectOne(parsed.frames[0]?.id ?? null);
       setPlaying(false);
       seek(0);
       setError(null);
     } catch (e) {
       setError(`Could not open the project: ${e instanceof Error ? e.message : String(e)}`);
     }
-  }, [seek]);
+  }, [seek, selectOne]);
 
   const requestOpen = useCallback(async () => {
     if (!canPick) { openRef.current?.click(); return; }
@@ -187,7 +203,7 @@ export function App() {
       if (items.length === 0) return;
       const cur = Math.max(0, items.findIndex((it) => it.rf.frame.id === selectedId));
       const next = items[Math.min(items.length - 1, Math.max(0, cur + step))];
-      setSelectedId(next.rf.frame.id);
+      selectOne(next.rf.frame.id);
       seek(next.start);
     };
     const onDown = (e: KeyboardEvent) => {
@@ -197,21 +213,26 @@ export function App() {
         if (key === 's') void saveProject(e.shiftKey); else void requestOpen();
         return;
       }
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && key === 'a' && !isTyping(e.target, true) && !exportOpen) {
+        e.preventDefault();
+        setSelection(project.frames.map((f) => f.id));
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey || exportOpen) return;
       if (e.code === 'Space' && !e.repeat && !isTyping(e.target)) { e.preventDefault(); togglePlay(); }
       else if (e.key === 'ArrowLeft' && !isTyping(e.target, true)) { e.preventDefault(); goToFrame(-1); }
       else if (e.key === 'ArrowRight' && !isTyping(e.target, true)) { e.preventDefault(); goToFrame(1); }
-      else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !isTyping(e.target, true)) {
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length > 0 && !isTyping(e.target, true)) {
         e.preventDefault();
-        setProject((p) => removeFrame(p, selectedId));
-        setSelectedId(null);
+        setProject((p) => selection.reduce(removeFrame, p));
+        selectOne(null);
       }
     };
     const onUp = (e: KeyboardEvent) => { if (e.code === 'Space' && !isTyping(e.target) && !exportOpen) e.preventDefault(); }; // щоб Space не «натискав» кнопку у фокусі
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-  }, [togglePlay, saveProject, requestOpen, project, selectedId, seek, exportOpen]);
+  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen]);
 
   return (
     <div className={`app ${dropping ? 'dropping' : ''}`}
@@ -237,13 +258,13 @@ export function App() {
         <button className="primary export-btn" data-tip="Make the final MP4, GIF or PNG" data-tip-pos="left" onClick={() => setExportOpen(true)}>Export</button>
       </header>
       <div className="left">
-      <FrameList project={project} selectedId={selectedId}
-        onSelect={setSelectedId}
-        onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelectedId((s) => (s === id ? null : s)); }}
+      <FrameList project={project} selection={selection}
+        onSelect={selectFrame}
+        onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelection((s) => s.filter((x) => x !== id)); }}
         onMove={(from, to) => setProject((p) => moveFrame(p, from, to))}
         onPickFiles={(files) => void addFiles(files)}
         onReplace={(id, file) => void replaceFile(id, file)}
-        onClear={() => { setProject((p) => ({ ...p, frames: [] })); setSelectedId(null); setPlaying(false); seek(0); }} />
+        onClear={() => { setProject((p) => ({ ...p, frames: [] })); selectOne(null); setPlaying(false); seek(0); }} />
         <div className="left-foot">
           <span>Theme</span>
           <Seg label="Theme" value={theme} onChange={setTheme} options={THEME_OPTIONS} />
@@ -256,12 +277,12 @@ export function App() {
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
-        <Timeline project={project} t={t} selectedId={selectedId} onSeek={seek} onSelect={setSelectedId}
+        <Timeline project={project} t={t} selection={selection} onSeek={seek} onSelect={selectOne}
           onDuration={(id, d) => setProject((p) => setFrameDuration(p, id, d))} />
       </div>
       <Resizer axis="x" invert label="Right panel width" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
-      <Sidebar project={project} selectedId={selectedId} duration={duration}
+      <Sidebar project={project} selection={selection} assets={assets} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
         stage={{ selectedImage, editSlot, onEditSlot: setEditSlot, onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => setProject((p) => setStageImage(p, k, undefined)) }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />

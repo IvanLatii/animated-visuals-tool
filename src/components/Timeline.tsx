@@ -5,13 +5,13 @@ import { buildTimeline } from '../render/renderScene';
 interface Props {
   project: Project;
   t: number;
-  selectedId: string | null;
+  selection: string[];
   onSeek: (t: number) => void;
   onSelect: (id: string) => void;
   onDuration: (id: string, d: number) => void;
 }
 
-export function Timeline({ project, t, selectedId, onSeek, onSelect, onDuration }: Props) {
+export function Timeline({ project, t, selection, onSeek, onSelect, onDuration }: Props) {
   const barRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const edge = useRef<{ id: string; startX: number; startDur: number; pxPerSec: number } | null>(null);
@@ -49,7 +49,7 @@ export function Timeline({ project, t, selectedId, onSeek, onSelect, onDuration 
           onPointerMove={(e) => { if (dragging.current) seekFromPointer(e.clientX); }}
           onPointerUp={() => { dragging.current = false; }}>
           {items.map((it) => (
-            <div key={it.rf.frame.id} className={`seg-t ${it.rf.frame.id === selectedId ? 'selected' : ''}`}
+            <div key={it.rf.frame.id} className={`seg-t ${selection.includes(it.rf.frame.id) ? 'selected' : ''}`}
               style={{ flexGrow: it.rf.duration, backgroundImage: `url(${it.rf.frame.layers[0].src})` }}>
               <span>{it.rf.duration.toFixed(2)} s</span>
               <div className="edge" onPointerDown={(e) => edgeDown(e, it.rf.frame.id, it.rf.duration)} onPointerMove={edgeMove} onPointerUp={() => { edge.current = null; }} onPointerCancel={() => { edge.current = null; }} />

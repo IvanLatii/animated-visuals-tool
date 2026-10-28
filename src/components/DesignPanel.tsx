@@ -4,7 +4,9 @@ import { CanvasControls } from './CanvasControls';
 import type { ExportSettings } from '../export/presets';
 import { Presets } from './Presets';
 import { SafeZones } from './SafeZones';
+import { SelectionPanel } from './SelectionPanel';
 import { StagePanel } from './StagePanel';
+import type { Assets } from '../render/renderScene';
 import { Section } from './ui';
 
 interface Props {
@@ -13,11 +15,14 @@ interface Props {
   onChange: (fn: (p: Project) => Project) => void;
   onExportSettings: (s: ExportSettings) => void;
   stage: Omit<React.ComponentProps<typeof StagePanel>, 'project' | 'onChange'>;
+  selection: string[];
+  assets: Assets;
 }
 
-export function DesignPanel({ project, exportSettings, onChange, onExportSettings, stage }: Props) {
+export function DesignPanel({ project, exportSettings, onChange, onExportSettings, stage, selection, assets }: Props) {
   return (
     <>
+      <SelectionPanel project={project} selection={selection} assets={assets} onChange={onChange} />
       <Presets project={project} exportSettings={exportSettings} onChange={onChange} onExportSettings={onExportSettings} />
       <Section id="format" title="Format">
         <CanvasControls project={project}

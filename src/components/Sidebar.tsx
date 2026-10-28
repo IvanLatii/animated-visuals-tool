@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ExportSettings } from '../export/presets';
+import type { Assets } from '../render/renderScene';
 import type { Project } from '../model/types';
 import { AnimatePanel } from './AnimatePanel';
 import { DesignPanel } from './DesignPanel';
@@ -12,22 +13,23 @@ const TABS: { id: Tab; label: string }[] = [
 
 interface Props {
   project: Project;
-  selectedId: string | null;
+  selection: string[];
   duration: number;
   exportSettings: ExportSettings;
   onChange: (fn: (p: Project) => Project) => void;
   onExportSettings: (s: ExportSettings) => void;
   stage: React.ComponentProps<typeof DesignPanel>['stage'];
+  assets: Assets;
 }
 
-export function Sidebar({ project, selectedId, duration, exportSettings, onChange, onExportSettings, stage }: Props) {
+export function Sidebar({ project, selection, assets, duration, exportSettings, onChange, onExportSettings, stage }: Props) {
   const [tab, setTab] = useState<Tab>('design');
   return (
     <aside className="side">
       <Tabs label="Panel" value={tab} onChange={setTab} options={TABS} />
       <div className="side-scroll">
-        {tab === 'design' && <DesignPanel project={project} exportSettings={exportSettings} onChange={onChange} onExportSettings={onExportSettings} stage={stage} />}
-        {tab === 'animate' && <AnimatePanel project={project} selectedId={selectedId} duration={duration} onChange={onChange} />}
+        {tab === 'design' && <DesignPanel project={project} exportSettings={exportSettings} onChange={onChange} onExportSettings={onExportSettings} stage={stage} selection={selection} assets={assets} />}
+        {tab === 'animate' && <AnimatePanel project={project} selection={selection} duration={duration} onChange={onChange} />}
       </div>
     </aside>
   );

@@ -9,13 +9,15 @@ import { NumberField, Row, Section, SelectRow, Seg, SliderRow } from './ui';
 
 interface Props {
   project: Project;
-  selectedId: string | null;
+  selection: string[];
   duration: number;
   onChange: (fn: (p: Project) => Project) => void;
 }
 
-export function AnimatePanel({ project, selectedId, duration, onChange }: Props) {
+export function AnimatePanel({ project, selection, duration, onChange }: Props) {
   const [scope, setScope] = useState<'project' | 'frame'>('project');
+  const selectedId = selection[selection.length - 1] ?? null; // для показу беремо останній виділений, зміни йдуть на всіх виділених
+  const each = (fn: (p: Project, id: string) => Project) => onChange((pr) => selection.reduce(fn, pr));
   const index = project.frames.findIndex((f) => f.id === selectedId);
   const frame = index >= 0 ? project.frames[index] : null;
   const rf = frame ? resolveFrame(project, frame) : null;
@@ -26,7 +28,7 @@ export function AnimatePanel({ project, selectedId, duration, onChange }: Props)
       <Section id="scope" title="Apply to">
         <Seg label="Apply to" value={editFrame ? 'frame' : 'project'} onChange={setScope} options={[
           { id: 'project', label: 'Whole project' },
-          { id: 'frame', label: frame ? `Frame ${index + 1}` : 'Frame', disabled: !frame },
+          { id: 'frame', label: selection.length > 1 ? `Selected (${selection.length})` : frame ? `Frame ${index + 1}` : 'Frame', disabled: !frame },
         ]} />
         {!editFrame && project.frames.length > 0 && (
           <Row label="Total duration, s">
@@ -40,19 +42,19 @@ export function AnimatePanel({ project, selectedId, duration, onChange }: Props)
         {editFrame ? (
           <>
             <SliderRow label="Frame duration, s" value={rf.duration} min={0.1} max={10} step={0.1} decimals={1}
-              onChange={(v) => onChange((pr) => A.setFrameDuration(pr, frame.id, v))} />
+              onChange={(v) => each((pr, id) => A.setFrameDuration(pr, id, v))} />
             {frame.duration !== undefined && (
-              <button className="link" onClick={() => onChange((pr) => A.setFrameDuration(pr, frame.id, undefined))}>Reset duration</button>
+              <button className="link" onClick={() => each((pr, id) => A.setFrameDuration(pr, id, undefined))}>Reset duration</button>
             )}
             <FitControls value={frame.layers[0]?.fit ?? project.defaults.layerFit} overridden={frame.layers.some((l) => l.fit !== undefined)}
-              onChange={(v) => onChange((pr) => A.setFrameFit(pr, frame.id, v))}
-              onReset={() => onChange((pr) => A.setFrameFit(pr, frame.id, undefined))} />
+              onChange={(v) => each((pr, id) => A.setFrameFit(pr, id, v))}
+              onReset={() => each((pr, id) => A.setFrameFit(pr, id, undefined))} />
             <MotionControls value={rf.motion} overridden={frame.motion !== undefined}
-              onChange={(patch) => onChange((pr) => A.setFrameMotion(pr, frame.id, patch))}
-              onReset={() => onChange((pr) => A.setFrameMotion(pr, frame.id, undefined))} />
+              onChange={(patch) => each((pr, id) => A.setFrameMotion(pr, id, patch))}
+              onReset={() => each((pr, id) => A.setFrameMotion(pr, id, undefined))} />
             <TransitionControls value={rf.transitionOut} overridden={frame.transitionOut !== undefined}
-              onChange={(patch) => onChange((pr) => A.setFrameTransition(pr, frame.id, patch))}
-              onReset={() => onChange((pr) => A.setFrameTransition(pr, frame.id, undefined))} />
+              onChange={(patch) => each((pr, id) => A.setFrameTransition(pr, id, patch))}
+              onReset={() => each((pr, id) => A.setFrameTransition(pr, id, undefined))} />
           </>
         ) : (
           <>

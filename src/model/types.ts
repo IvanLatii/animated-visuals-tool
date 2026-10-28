@@ -37,6 +37,10 @@ export interface ImageLayer {
   x: number; y: number; w: number; h: number; // 0–1
   /** Не задано — береться Defaults.layerFit. */
   fit?: 'fit' | 'fill';
+  /** Власне перетворення зображення в межах вікна: розтягування (1 = як є), зсув від центру в частках вікна, поворот у градусах. */
+  scaleX?: number; scaleY?: number;
+  dx?: number; dy?: number;
+  rotation?: number;
 }
 export type Layer = ImageLayer; // 'text' | '3d' — пізніше
 
