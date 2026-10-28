@@ -4,8 +4,8 @@ import type { Frame, Layer, Motion, Project, Rect, SafeZone, Stage, Transition }
 
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
 
-export function newFrame(src: string): Frame {
-  return { id: crypto.randomUUID(), layers: [imageLayer(src)] };
+export function newFrame(src: string, name?: string): Frame {
+  return { id: crypto.randomUUID(), name, layers: [imageLayer(src)] };
 }
 
 export function addFrames(project: Project, frames: Frame[]): Project {
@@ -13,8 +13,8 @@ export function addFrames(project: Project, frames: Frame[]): Project {
 }
 
 /** Міняє картинку першого шару, усе інше в кадрі (тривалість, рух, перехід) лишається. */
-export function replaceFrameImage(project: Project, id: string, src: string): Project {
-  return mapFrame(project, id, (f) => ({ ...f, layers: f.layers.map((l, i) => (i === 0 ? { ...l, src } : l)) }));
+export function replaceFrameImage(project: Project, id: string, src: string, name?: string): Project {
+  return mapFrame(project, id, (f) => ({ ...f, name: name ?? f.name, layers: f.layers.map((l, i) => (i === 0 ? { ...l, src } : l)) }));
 }
 
 export function setProjectName(project: Project, name: string): Project {

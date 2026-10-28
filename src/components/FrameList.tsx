@@ -7,6 +7,7 @@ interface Props {
   project: Project;
   selection: string[];
   onSelect: (id: string, mode: 'single' | 'toggle' | 'range') => void;
+  onDeselect: () => void;
   onRemove: (id: string) => void;
   onMove: (from: number, to: number) => void;
   onPickFiles: (files: FileList) => void;
@@ -14,7 +15,7 @@ interface Props {
   onClear: () => void;
 }
 
-export function FrameList({ project, selection, onSelect, onRemove, onMove, onPickFiles, onReplace, onClear }: Props) {
+export function FrameList({ project, selection, onSelect, onDeselect, onRemove, onMove, onPickFiles, onReplace, onClear }: Props) {
   const addRef = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
   const replaceId = useRef<string | null>(null);
@@ -22,7 +23,7 @@ export function FrameList({ project, selection, onSelect, onRemove, onMove, onPi
   const [dragOver, setDragOver] = useState<number | null>(null);
 
   return (
-    <section className="panel frames">
+    <section className="panel frames" onClick={(e) => { if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'OL') onDeselect(); }}>
       <header>
         <h2>Frames</h2>
         <div className="head-actions">
@@ -65,14 +66,19 @@ export function FrameList({ project, selection, onSelect, onRemove, onMove, onPi
                 }}
                 onDragEnd={() => { setDragFrom(null); setDragOver(null); }}>
                 <span className="num">{i + 1}</span>
-                <span className="thumb">
-                  <img src={frame.layers[0].src} alt="" draggable={false} />
-                  <button className="rep" aria-label={`Replace image of frame ${i + 1}`}
-                    onClick={(e) => { e.stopPropagation(); replaceId.current = frame.id; replaceRef.current?.click(); }}>Replace</button>
+                <span className="thumb"><img src={frame.layers[0].src} alt="" draggable={false} /></span>
+                <span className="meta">
+                  <b className="fname" title={frame.name}>{frame.name || `Image ${i + 1}`}</b>
+                  <span className="dur">{rf.duration.toFixed(1)} s</span>
                 </span>
-                <span className="dur">{rf.duration.toFixed(1)} s</span>
-                <button className="icon danger" data-tip="Delete frame · Delete" data-tip-pos="left" aria-label={`Delete frame ${i + 1}`}
-                  onClick={(e) => { e.stopPropagation(); onRemove(frame.id); }}>×</button>
+                <span className="acts">
+                  <button className="icon danger" data-tip="Delete frame · Delete" data-tip-pos="left" aria-label={`Delete frame ${i + 1}`}
+                    onClick={(e) => { e.stopPropagation(); onRemove(frame.id); }}>×</button>
+                  <button className="icon" data-tip="Replace image" data-tip-pos="left" aria-label={`Replace image of frame ${i + 1}`}
+                    onClick={(e) => { e.stopPropagation(); replaceId.current = frame.id; replaceRef.current?.click(); }}>
+                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2.5 5h9M9 2.5 11.5 5 9 7.5M13.5 11h-9M7 8.5 4.5 11 7 13.5" /></svg>
+                  </button>
+                </span>
               </li>
             );
           })}

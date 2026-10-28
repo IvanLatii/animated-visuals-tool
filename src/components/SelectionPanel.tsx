@@ -11,8 +11,6 @@ interface Props {
   onChange: (fn: (p: Project) => Project) => void;
   keep: boolean;
   onKeep: (v: boolean) => void;
-  editImage: boolean;
-  onEditImage: (v: boolean) => void;
   onSelectAll: () => void;
 }
 
@@ -31,7 +29,7 @@ function common(values: number[]): { value: number; mixed: boolean } {
   return { value: first, mixed: values.some((v) => Math.abs(v - first) > 1e-6) };
 }
 
-export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep, editImage, onEditImage, onSelectAll }: Props) {
+export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep, onSelectAll }: Props) {
   const frames = project.frames.filter((f) => selection.includes(f.id));
   if (frames.length === 0) {
     return (
@@ -63,7 +61,6 @@ export function SelectionPanel({ project, selection, assets, onChange, keep, onK
     <Section id="selection" title={frames.length > 1 ? `Selected images (${frames.length})` : 'Selected image'}>
       <Seg label="Fit mode" value={fitValue} onChange={(v) => onChange((p) => ids.reduce((acc, id) => A.setFrameFit(acc, id, v as 'fit' | 'fill'), p))}
         options={[{ id: 'fit', label: 'Fit' }, { id: 'fill', label: 'Fill' }]} />
-      <Row label="Edit on canvas"><input type="checkbox" checked={editImage} onChange={(e) => onEditImage(e.target.checked)} /></Row>
       <Row label="Width, %"><NumberField value={sx.value} mixed={sx.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'x', v / 100, keep))} /></Row>
       <Row label="Height, %"><NumberField value={sy.value} mixed={sy.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'y', v / 100, keep))} /></Row>
       <Row label="Keep proportions"><input type="checkbox" checked={keep} onChange={(e) => onKeep(e.target.checked)} /></Row>

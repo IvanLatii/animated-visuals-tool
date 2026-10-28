@@ -3,7 +3,7 @@
 :root {
   --bg: #f4f4f3; --panel: #ffffff; --ink: #0d0d0f; --on-ink: #ffffff; --text: #1a1a1c; --muted: #8e8e94;
   --line: #efeff1; --line-strong: #cdcdd2; --accent: #2f3cff; --danger: #d9342b; --dot: rgb(0 0 0 / .1); --ease-pill: cubic-bezier(.34, 1.5, .64, 1); --ease-out: cubic-bezier(.3, .7, .2, 1);
-  --h: 24px; --bar: 36px;
+  --h: 28px; --bar: 36px;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light;
 }
@@ -95,10 +95,10 @@ progress::-webkit-progress-value { background: var(--accent); }
 .panel { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 .panel > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .frames ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.frame { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto var(--h); align-items: center; gap: 8px; padding: 4px; border: 1px solid var(--line); cursor: grab; }
+.frame { display: grid; grid-template-columns: 14px 44px minmax(0, 1fr) var(--h); align-items: center; gap: 8px; padding: 4px; border: 1px solid var(--line); cursor: grab; }
 .frame.selected { border-color: var(--ink); background: var(--bg); }
 .frame.drop-target { border-top: 2px solid var(--accent); }
-.frame img { width: 100%; height: calc(var(--h) * 2); object-fit: cover; display: block; }
+.frame img { width: 44px; height: 44px; object-fit: cover; display: block; background: var(--bg); }
 .frame .num, .frame .dur { color: var(--muted); font-size: 10px; }
 .frame .icon { border: none; background: none; }
 .frame .icon:hover:not(:disabled) { color: var(--accent); }
@@ -317,3 +317,16 @@ button.icon.danger:hover:not(:disabled) { border-color: var(--danger); color: va
 .histbar { right: auto; left: 12px; }
 .histbar button { padding: 0; width: var(--h); }
 .histbar button:disabled { opacity: .35; }
+
+/* --- Рядок кадру: номер, мініатюра, назва з тривалістю, дії --- */
+.frame { padding: 4px 4px 4px 8px; }
+.frame .meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.frame .fname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.frame .acts { display: flex; flex-direction: column; justify-content: space-between; align-self: stretch; }
+.frame .acts .icon { height: 22px; }
+
+/* --- Перемикач теми: праворуч, на всю висоту, без рамок --- */
+.left-foot { padding: 0 0 0 16px; }
+.left-foot .seg { height: 100%; border: none; }
+.left-foot .seg button { padding: 0 14px; border-right: none; border-left: 1px solid var(--line); }
+.left-foot .seg button:first-child { border-left: 1px solid var(--line); }

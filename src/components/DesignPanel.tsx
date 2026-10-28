@@ -17,7 +17,7 @@ interface Props {
   stage: Omit<React.ComponentProps<typeof StagePanel>, 'project' | 'onChange'>;
   selection: string[];
   assets: Assets;
-  transform: Pick<React.ComponentProps<typeof SelectionPanel>, 'keep' | 'onKeep' | 'editImage' | 'onEditImage' | 'onSelectAll'>;
+  transform: Pick<React.ComponentProps<typeof SelectionPanel>, 'keep' | 'onKeep' | 'onSelectAll'>;
 }
 
 export function DesignPanel({ project, exportSettings, onChange, onExportSettings, stage, selection, assets, transform }: Props) {

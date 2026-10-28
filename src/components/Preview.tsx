@@ -9,7 +9,6 @@ interface Props {
   t: number;
   editSlot: boolean;
   onSlot: (r: Rect) => void;
-  editImage: boolean;
   selection: string[];
   keep: boolean;
   canUndo: boolean;
@@ -32,7 +31,7 @@ const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 interface View { zoom: number; x: number; y: number } // zoom = множник відносно «вмістити», x/y — зсув у пікселях екрана
 
-export function Preview({ project, assets, t, editSlot, onSlot, editImage, selection, keep, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, editSlot, onSlot, selection, keep, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
@@ -54,11 +53,10 @@ export function Preview({ project, assets, t, editSlot, onSlot, editImage, selec
   const scale = fit * view.zoom;
   const zMin = Math.min(1, MIN_SCALE / fit), zMax = Math.max(1, MAX_SCALE / fit);
 
-  // Поки редагуємо розташування мишею, рух кадру вимкнений, щоб рамка збігалась із картинкою.
-  const imageEditing = editImage && !playing && !editSlot && selection.length > 0;
+  const imageEditing = !playing && !editSlot && selection.length > 0;
   useEffect(() => {
-    if (canvasRef.current) renderScene(project, t, canvasRef.current, assets, { noMotion: imageEditing });
-  }, [project, assets, t, imageEditing]);
+    if (canvasRef.current) renderScene(project, t, canvasRef.current, assets);
+  }, [project, assets, t]);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -172,7 +170,7 @@ export function Preview({ project, assets, t, editSlot, onSlot, editImage, selec
             </div>
           )}
           {imageEditing && (
-            <ImageEditor project={project} assets={assets} selection={selection} keep={keep} onPatches={onPatches}
+            <ImageEditor project={project} assets={assets} selection={selection} t={t} keep={keep} onPatches={onPatches}
               toCanvas={(e) => { const r = wrapRef.current!.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * w, y: ((e.clientY - r.top) / r.height) * h }; }} />
           )}
           {editSlot && (

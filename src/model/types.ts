@@ -46,6 +46,8 @@ export type Layer = ImageLayer; // 'text' | '3d' — пізніше
 
 export interface Frame {
   id: string;
+  /** Назва зображення (ім'я файлу без розширення) для списку кадрів. */
+  name?: string;
   layers: Layer[];
   // Усе нижче необов'язкове: якщо не задано, береться з Project.defaults.
   duration?: number;

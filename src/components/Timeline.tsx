@@ -45,7 +45,7 @@ export function Timeline({ project, t, selection, onSeek, onSelect, onDuration }
     <section className="timeline">
       {total === 0 ? <p className="hint">No frames yet</p> : (
         <div ref={barRef} className="bar"
-          onPointerDown={(e) => { dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId); seekFromPointer(e.clientX); }}
+          onPointerDown={(e) => { dragging.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* штучна подія без реального вказівника */ } seekFromPointer(e.clientX); }}
           onPointerMove={(e) => { if (dragging.current) seekFromPointer(e.clientX); }}
           onPointerUp={() => { dragging.current = false; }}>
           {items.map((it) => (

@@ -13,10 +13,10 @@ export const TRANSITION_EASING: Easing = { type: 'ease-in-out', strength: 2 };
 
 /** Рекомендовані параметри при виборі типу руху (зум і «без руху» нічого не міняють). Плавні, без різких стрибків. */
 export const MOTION_DEFAULTS: Partial<Record<MotionType, Partial<Motion>>> = {
-  focus: { intensity: 0.2, easing: { type: 'ease-in-out', strength: 2.5 } },
-  appear: { intensity: 0.2, easing: { type: 'ease-out', strength: 3 } },
-  rise: { intensity: 0.2, easing: { type: 'ease-out', strength: 4 } },
-  pop: { intensity: 0.2, easing: { type: 'ease-out', strength: 4 } },
+  focus: { intensity: 0.12, easing: { type: 'ease-in-out', strength: 2.5 } },
+  appear: { intensity: 0.12, easing: { type: 'ease-out', strength: 3 } },
+  rise: { intensity: 0.12, easing: { type: 'ease-out', strength: 4 } },
+  pop: { intensity: 0.12, easing: { type: 'ease-out', strength: 4 } },
 };
 
 /** Рекомендована тривалість і крива при виборі переходу: швидкі, але не різкі. */
@@ -33,7 +33,7 @@ export const TRANSITION_DEFAULTS: Record<TransitionType, Partial<Transition>> = 
   'blur-dissolve': { duration: 0.5, easing: { type: 'ease-in-out', strength: 2 } },
 };
 
-export const DEFAULT_MOTION: Motion = { type: 'zoom-in', intensity: 0.2, easing: MOTION_EASING };
+export const DEFAULT_MOTION: Motion = { type: 'zoom-in', intensity: 0.12, easing: MOTION_EASING };
 export const DEFAULT_TRANSITION: Transition = { type: 'crossfade', duration: 0.3, easing: TRANSITION_EASING };
 
 export const DEFAULTS: Defaults = {

@@ -39,12 +39,8 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [editSlot, setEditSlotRaw] = useState(false);
-  const [editImage, setEditImageRaw] = useState(false);
+  const [editSlot, setEditSlot] = useState(false); // рамка вікна вмісту; рамка зображення з'являється сама при виділенні
   const [keepProportions, setKeepProportions] = useStoredOpen('keep-proportions', true); // замок пропорцій, за замовчуванням увімкнений
-  // Одночасно працює лише один редактор на артборді: вікно вмісту або зображення.
-  const setEditSlot = (v: boolean) => { setEditSlotRaw(v); if (v) setEditImageRaw(false); };
-  const setEditImage = (v: boolean) => { setEditImageRaw(v); if (v) setEditSlotRaw(false); };
   const [exportSettings, setExportSettings] = useState<ExportSettings>(DEFAULT_SETTINGS);
   const openRef = useRef<HTMLInputElement>(null);
   const fileHandle = useRef<FileHandle | null>(null); // файл, у який ⌘S зберігає мовчки
@@ -92,7 +88,7 @@ export function App() {
     for (const file of images) {
       try {
         const src = await fileToDataUrl(file);
-        loaded.push({ frame: newFrame(src), img: await loadImage(src) });
+        loaded.push({ frame: newFrame(src, file.name.replace(/\.[^.]+$/, '')), img: await loadImage(src) });
       } catch {
         setError(`Could not open "${file.name}".`);
       }
@@ -113,7 +109,7 @@ export function App() {
       const src = await fileToDataUrl(file);
       const img = await loadImage(src);
       setAssets((prev) => new Map(prev).set(src, img));
-      setProject((p) => replaceFrameImage(p, id, src));
+      setProject((p) => replaceFrameImage(p, id, src, file.name.replace(/\.[^.]+$/, '')));
       setError(null);
     } catch {
       setError(`Could not open "${file.name}".`);
@@ -282,7 +278,7 @@ export function App() {
       </header>
       <div className="left">
       <FrameList project={project} selection={selection}
-        onSelect={selectFrame}
+        onSelect={selectFrame} onDeselect={() => selectOne(null)}
         onRemove={(id) => { setProject((p) => removeFrame(p, id)); setSelection((s) => s.filter((x) => x !== id)); }}
         onMove={(from, to) => setProject((p) => moveFrame(p, from, to))}
         onPickFiles={(files) => void addFiles(files)}
@@ -297,7 +293,7 @@ export function App() {
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">
         <Preview project={project} assets={assets} t={t} editSlot={editSlot} onSlot={(r) => setProject((p) => setSlot(p, r))}
-          editImage={editImage} selection={selection} keep={keepProportions} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches))}
+          selection={selection} keep={keepProportions} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches))}
           canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} playing={playing} loop={loop} duration={duration}
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
@@ -309,7 +305,7 @@ export function App() {
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
       <Sidebar project={project} selection={selection} assets={assets} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
-        transform={{ keep: keepProportions, onKeep: setKeepProportions, editImage, onEditImage: setEditImage, onSelectAll: () => setSelection(project.frames.map((f) => f.id)) }}
+        transform={{ keep: keepProportions, onKeep: setKeepProportions, onSelectAll: () => setSelection(project.frames.map((f) => f.id)) }}
         stage={{ selectedImage, editSlot, onEditSlot: setEditSlot, onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => setProject((p) => setStageImage(p, k, undefined)) }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />
       <ExportPanel project={project} assets={assets} t={t} settings={exportSettings} onSettings={setExportSettings}
