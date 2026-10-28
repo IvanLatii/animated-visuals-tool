@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import type { Project, Rect } from '../model/types';
 import { renderScene, type Assets } from '../render/renderScene';
+import { ImageEditor } from './ImageEditor';
 
 interface Props {
   project: Project;
@@ -8,6 +9,10 @@ interface Props {
   t: number;
   editSlot: boolean;
   onSlot: (r: Rect) => void;
+  editImage: boolean;
+  selection: string[];
+  keep: boolean;
+  onPatches: React.ComponentProps<typeof ImageEditor>['onPatches'];
   playing: boolean;
   loop: boolean;
   duration: number;
@@ -23,13 +28,14 @@ const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 interface View { zoom: number; x: number; y: number } // zoom = множник відносно «вмістити», x/y — зсув у пікселях екрана
 
-export function Preview({ project, assets, t, editSlot, onSlot, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, editSlot, onSlot, editImage, selection, keep, onPatches, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<View>({ zoom: 1, x: 0, y: 0 });
   const [panning, setPanning] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const slotDrag = useRef<{ handle: Handle; sx: number; sy: number; rect: Rect } | null>(null);
   const { w, h } = project.canvas;
   const visibleZones = project.canvas.safeZones.filter((z) => z.visible);
@@ -44,9 +50,11 @@ export function Preview({ project, assets, t, editSlot, onSlot, playing, loop, d
   const scale = fit * view.zoom;
   const zMin = Math.min(1, MIN_SCALE / fit), zMax = Math.max(1, MAX_SCALE / fit);
 
+  // Поки редагуємо розташування мишею, рух кадру вимкнений, щоб рамка збігалась із картинкою.
+  const imageEditing = editImage && !playing && !editSlot && selection.length > 0;
   useEffect(() => {
-    if (canvasRef.current) renderScene(project, t, canvasRef.current, assets);
-  }, [project, assets, t]);
+    if (canvasRef.current) renderScene(project, t, canvasRef.current, assets, { noMotion: imageEditing });
+  }, [project, assets, t, imageEditing]);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -145,7 +153,7 @@ export function Preview({ project, assets, t, editSlot, onSlot, playing, loop, d
       <div ref={stageRef} className={`stage ${panning ? 'panning' : ''}`}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endPan} onPointerCancel={endPan}
         onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }} onDoubleClick={fitView}>
-        <div className="canvas-wrap" style={{ width: w * scale, height: h * scale, transform: `translate(${view.x}px, ${view.y}px)`, visibility: box.w ? 'visible' : 'hidden' } as CSSProperties}>
+        <div ref={wrapRef} className="canvas-wrap" style={{ width: w * scale, height: h * scale, transform: `translate(${view.x}px, ${view.y}px)`, visibility: box.w ? 'visible' : 'hidden' } as CSSProperties}>
           <div className="marks" aria-hidden><i /><i /><i /><i /></div>
           <span className="cap top">Scene · {duration.toFixed(1)} s</span>
           <canvas ref={canvasRef} width={w} height={h} />
@@ -158,6 +166,10 @@ export function Preview({ project, assets, t, editSlot, onSlot, playing, loop, d
             <div className="safe-zone combined" style={{ inset: `${combined.top * 100}% ${combined.right * 100}% ${combined.bottom * 100}% ${combined.left * 100}%`, '--zc': '#ffd400' } as CSSProperties}>
               <span>{visibleZones.map((z) => z.name.split(' ')[0]).join(', ')}</span>
             </div>
+          )}
+          {imageEditing && (
+            <ImageEditor project={project} assets={assets} selection={selection} keep={keep} onPatches={onPatches}
+              toCanvas={(e) => { const r = wrapRef.current!.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * w, y: ((e.clientY - r.top) / r.height) * h }; }} />
           )}
           {editSlot && (
             <div className="slot-edit" style={{ left: `${project.stage.slot.x * 100}%`, top: `${project.stage.slot.y * 100}%`, width: `${project.stage.slot.w * 100}%`, height: `${project.stage.slot.h * 100}%` }}

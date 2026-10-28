@@ -17,12 +17,13 @@ interface Props {
   stage: Omit<React.ComponentProps<typeof StagePanel>, 'project' | 'onChange'>;
   selection: string[];
   assets: Assets;
+  transform: Pick<React.ComponentProps<typeof SelectionPanel>, 'keep' | 'onKeep' | 'editImage' | 'onEditImage'>;
 }
 
-export function DesignPanel({ project, exportSettings, onChange, onExportSettings, stage, selection, assets }: Props) {
+export function DesignPanel({ project, exportSettings, onChange, onExportSettings, stage, selection, assets, transform }: Props) {
   return (
     <>
-      <SelectionPanel project={project} selection={selection} assets={assets} onChange={onChange} />
+      <SelectionPanel project={project} selection={selection} assets={assets} onChange={onChange} {...transform} />
       <Presets project={project} exportSettings={exportSettings} onChange={onChange} onExportSettings={onExportSettings} />
       <Section id="format" title="Format">
         <CanvasControls project={project}

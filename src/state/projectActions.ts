@@ -212,3 +212,8 @@ export function resetLayerTransform(project: Project, ids: string[]): Project {
     return rest;
   });
 }
+
+/** Застосовує різні зміни до перших шарів різних кадрів (перетягування мишею). */
+export function applyLayerPatches(project: Project, patches: Record<string, LayerPatch>): Project {
+  return { ...project, frames: project.frames.map((f) => (patches[f.id] ? { ...f, layers: f.layers.map((l, i) => (i === 0 ? { ...l, ...patches[f.id] } : l)) } : f)) };
+}

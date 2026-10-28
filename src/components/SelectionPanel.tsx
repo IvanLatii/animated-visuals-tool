@@ -2,13 +2,17 @@ import type { Project } from '../model/types';
 import { alignedOffset, type AlignHow } from '../render/layerGeometry';
 import type { Assets } from '../render/renderScene';
 import * as A from '../state/projectActions';
-import { Row, Section, NumberField, useStoredOpen } from './ui';
+import { Row, Section, NumberField } from './ui';
 
 interface Props {
   project: Project;
   selection: string[];
   assets: Assets;
   onChange: (fn: (p: Project) => Project) => void;
+  keep: boolean;
+  onKeep: (v: boolean) => void;
+  editImage: boolean;
+  onEditImage: (v: boolean) => void;
 }
 
 const ALIGN: { how: AlignHow; label: string; path: string }[] = [
@@ -26,8 +30,7 @@ function common(values: number[]): { value: number; mixed: boolean } {
   return { value: first, mixed: values.some((v) => Math.abs(v - first) > 1e-6) };
 }
 
-export function SelectionPanel({ project, selection, assets, onChange }: Props) {
-  const [keep, setKeep] = useStoredOpen('keep-proportions', true); // замок пропорцій, за замовчуванням увімкнений
+export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep, editImage, onEditImage }: Props) {
   const frames = project.frames.filter((f) => selection.includes(f.id));
   if (frames.length === 0) return null;
   const layers = frames.map((f) => f.layers[0]).filter(Boolean);
@@ -48,9 +51,10 @@ export function SelectionPanel({ project, selection, assets, onChange }: Props) 
 
   return (
     <Section id="selection" title={frames.length > 1 ? `Selected images (${frames.length})` : 'Selected image'}>
+      <Row label="Edit on canvas"><input type="checkbox" checked={editImage} onChange={(e) => onEditImage(e.target.checked)} /></Row>
       <Row label="Width, %"><NumberField value={sx.value} mixed={sx.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'x', v / 100, keep))} /></Row>
       <Row label="Height, %"><NumberField value={sy.value} mixed={sy.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'y', v / 100, keep))} /></Row>
-      <Row label="Keep proportions"><input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} /></Row>
+      <Row label="Keep proportions"><input type="checkbox" checked={keep} onChange={(e) => onKeep(e.target.checked)} /></Row>
       <div className="btn-row">
         <button onClick={() => onChange((p) => A.scaleLayers(p, ids, 0.9))}>− 10%</button>
         <button onClick={() => onChange((p) => A.scaleLayers(p, ids, 1.1))}>+ 10%</button>

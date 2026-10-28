@@ -26,3 +26,13 @@ export function alignedOffset(layer: Layer, fit: 'fit' | 'fill', img: { width: n
   else dy = (H / 2 - b.cy) / H;
   return { dx, dy };
 }
+
+/** Видима область зображення після власного перетворення: центр у пікселях вікна, розміри до повороту й кут (градуси). */
+export function layerBounds(layer: Layer, fit: 'fit' | 'fill', img: { width: number; height: number }, W: number, H: number) {
+  const b = baseBox(layer, fit, img, W, H);
+  return {
+    cx: b.cx + (layer.dx ?? 0) * W, cy: b.cy + (layer.dy ?? 0) * H,
+    w: b.vw * (layer.scaleX ?? 1), h: b.vh * (layer.scaleY ?? 1),
+    rot: layer.rotation ?? 0,
+  };
+}

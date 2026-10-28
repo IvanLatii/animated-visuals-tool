@@ -62,9 +62,9 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fi
   ctx.restore();
 }
 
-function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size) {
+function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size, noMotion = false) {
   const { w: W, h: H } = size;
-  const tr = motions[rf.motion.type](rf.motion, progress, { w: W, h: H });
+  const tr = noMotion ? { scale: 1, dx: 0, dy: 0, rotate: 0 } : motions[rf.motion.type](rf.motion, progress, { w: W, h: H });
   ctx.save();
   ctx.translate(W / 2 + tr.dx * W, H / 2 + tr.dy * H);
   ctx.rotate(tr.rotate);
@@ -96,7 +96,9 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
  * Статична картинка = t = 0. Розмір у пікселях береться з canvas.
  * Шари знизу вгору: колір і картинка фону → тінь вікна → кадри (обрізані вікном) → накладка.
  */
-export function renderScene(project: Project, t: number, canvas: HTMLCanvasElement, assets: Assets): void {
+/** opts.noMotion — малює без руху кадру: для редагування розташування зображень мишею (рамка збігається з картинкою). */
+export function renderScene(project: Project, t: number, canvas: HTMLCanvasElement, assets: Assets, opts: { noMotion?: boolean } = {}): void {
+  const noMotion = opts.noMotion ?? false;
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   const W = canvas.width, H = canvas.height;
   ctx.fillStyle = project.canvas.background;
@@ -160,12 +162,12 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
     transitions[tr.type](
       ctx,
       applyEasing(tr.easing, p),
-      () => drawFrame(ctx, prev.rf, fitDefault, progressOf(prev), assets, size),
-      () => drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size),
+      () => drawFrame(ctx, prev.rf, fitDefault, progressOf(prev), assets, size, noMotion),
+      () => drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size, noMotion),
       size,
     );
   } else {
-    drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size);
+    drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size, noMotion);
   }
   ctx.restore();
   drawOverlay();

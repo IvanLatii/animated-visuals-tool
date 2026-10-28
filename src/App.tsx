@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { FrameList } from './components/FrameList';
 import { Preview } from './components/Preview';
 import { Resizer } from './components/Resizer';
+import { useStoredOpen } from './components/ui';
 import { Seg } from './components/ui';
 import { DEFAULT_LAYOUT, LIMITS, loadLayout, saveLayout, type Layout } from './layout';
 import { Timeline } from './components/Timeline';
@@ -16,7 +17,7 @@ import type { Project } from './model/types';
 import { parseProject, projectFileName, serializeProject } from './model/projectFile';
 import { canPick, downloadText, isAbort, pickOpenHandle, pickSaveHandle, writeHandle, type FileHandle } from './projectIO';
 import { buildTimeline, loadAssets, projectDuration, type Assets } from './render/renderScene';
-import { addFrames, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
+import { addFrames, applyLayerPatches, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
 
@@ -37,7 +38,12 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [editSlot, setEditSlot] = useState(false);
+  const [editSlot, setEditSlotRaw] = useState(false);
+  const [editImage, setEditImageRaw] = useState(false);
+  const [keepProportions, setKeepProportions] = useStoredOpen('keep-proportions', true); // замок пропорцій, за замовчуванням увімкнений
+  // Одночасно працює лише один редактор на артборді: вікно вмісту або зображення.
+  const setEditSlot = (v: boolean) => { setEditSlotRaw(v); if (v) setEditImageRaw(false); };
+  const setEditImage = (v: boolean) => { setEditImageRaw(v); if (v) setEditSlotRaw(false); };
   const [exportSettings, setExportSettings] = useState<ExportSettings>(DEFAULT_SETTINGS);
   const openRef = useRef<HTMLInputElement>(null);
   const fileHandle = useRef<FileHandle | null>(null); // файл, у який ⌘S зберігає мовчки
@@ -47,8 +53,19 @@ export function App() {
 
   const duration = projectDuration(project);
   const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); anchor.current = id; }, []);
+  const selectedFrame = project.frames.find((f) => f.id === selectedId);
+  const selImg = selectedFrame ? assets.get(selectedFrame.layers[0].src) : undefined;
+  const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
+
+  const seek = useCallback((time: number) => { tRef.current = time; setT(time); }, []);
+
   const selectFrame = useCallback((id: string, mode: 'single' | 'toggle' | 'range') => {
-    if (mode === 'single') { selectOne(id); return; }
+    if (mode === 'single') {
+      selectOne(id);
+      const it = buildTimeline(project).items.find((x) => x.rf.frame.id === id);
+      if (it) seek(it.start); // на сцені одразу видно вибраний кадр
+      return;
+    }
     const order = project.frames.map((f) => f.id);
     if (mode === 'toggle') {
       setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -59,12 +76,7 @@ export function App() {
     const [lo, hi] = a <= b ? [a, b] : [b, a];
     const range = order.slice(lo, hi + 1);
     setSelection(a > b ? range.reverse() : range); // натиснутий кадр стає останнім — основним
-  }, [project.frames, selectedId, selectOne]);
-  const selectedFrame = project.frames.find((f) => f.id === selectedId);
-  const selImg = selectedFrame ? assets.get(selectedFrame.layers[0].src) : undefined;
-  const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
-
-  const seek = useCallback((time: number) => { tRef.current = time; setT(time); }, []);
+  }, [project, selectedId, selectOne, seek]);
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const images = [...files].filter((f) => f.type.startsWith('image/'));
@@ -273,7 +285,8 @@ export function App() {
       <Resizer axis="x" label="Left panel width" value={layout.left} min={LIMITS.left[0]} max={LIMITS.left[1]}
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">
-        <Preview project={project} assets={assets} t={t} editSlot={editSlot} onSlot={(r) => setProject((p) => setSlot(p, r))} playing={playing} loop={loop} duration={duration}
+        <Preview project={project} assets={assets} t={t} editSlot={editSlot} onSlot={(r) => setProject((p) => setSlot(p, r))}
+          editImage={editImage} selection={selection} keep={keepProportions} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches))} playing={playing} loop={loop} duration={duration}
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
@@ -284,6 +297,7 @@ export function App() {
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />
       <Sidebar project={project} selection={selection} assets={assets} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
+        transform={{ keep: keepProportions, onKeep: setKeepProportions, editImage, onEditImage: setEditImage }}
         stage={{ selectedImage, editSlot, onEditSlot: setEditSlot, onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => setProject((p) => setStageImage(p, k, undefined)) }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />
       <ExportPanel project={project} assets={assets} t={t} settings={exportSettings} onSettings={setExportSettings}

@@ -306,3 +306,9 @@ button.icon.danger:hover:not(:disabled) { border-color: var(--danger); color: va
 .align-row button { flex: 1; width: auto; border: none; border-right: 1px solid var(--line-strong); }
 .align-row button:last-child { border-right: none; }
 .align-row button:hover:not(:disabled) { background: var(--bg); }
+
+/* --- Рамка зображення на артборді --- */
+.img-edit { position: absolute; border: 1px solid var(--accent); box-shadow: 0 0 0 1px rgb(0 0 0 / .45); cursor: move; touch-action: none; transform-origin: center; }
+.img-edit .hd { position: absolute; width: 9px; height: 9px; background: #fff; border: 1px solid var(--accent); margin: -5px 0 0 -5px; }
+.img-edit::before { content: ""; position: absolute; left: 50%; top: -24px; width: 1px; height: 24px; background: var(--accent); pointer-events: none; }
+.hd-rot { left: 50%; top: -24px; cursor: grab; border-radius: 50%; }
