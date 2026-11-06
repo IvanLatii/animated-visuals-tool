@@ -15,6 +15,9 @@ npm run dev
 ```
 Потім відкрити http://localhost:5173. Тест-прототип (spike) лежить на /spike.html.
 
+## Де працює
+https://animated-visuals-tool.ivlat.workers.dev (Cloudflare, безкоштовний план). Оновити: `./scripts/deploy.sh` (потрібен `npx wrangler login`). Код: https://github.com/IvanLatii/animated-visuals-tool
+
 ## Файли
 - `CLAUDE.md` — бриф і правила роботи
 - `DECISIONS.md` — журнал рішень
