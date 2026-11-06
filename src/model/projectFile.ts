@@ -22,9 +22,12 @@ export function parseProject(json: string): Project {
     }
   }
   const base = newProject();
+  // Старі файли не знають про нові safe-зони: дописуємо ті, яких ще нема (вимкнені), свої правки не чіпаємо.
+  const zones = data.canvas.safeZones ?? [];
+  const safeZones = [...zones, ...base.canvas.safeZones.filter((z) => !zones.some((o) => o.id === z.id))];
   return {
     ...base, ...data,
-    canvas: { ...base.canvas, ...data.canvas },
+    canvas: { ...base.canvas, ...data.canvas, safeZones },
     defaults: { ...base.defaults, ...data.defaults },
     stage: { ...base.stage, ...data.stage, slot: { ...base.stage.slot, ...data.stage?.slot } },
   } as Project;

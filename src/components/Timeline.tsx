@@ -73,6 +73,14 @@ export function Timeline({ project, t, selection, onSeek, onSelect, onDuration, 
   return (
     <section className="timeline">
       {total === 0 ? <p className="hint">No frames yet</p> : (
+        <>
+        {/* Ліва колонка підписів: графіка й звук — окремі зони, між ними лінія */}
+        <div className="tl-gutter" aria-hidden>
+          <span className="tl-label tl-frames">Frames</span>
+          <div className="tl-lanes">
+            {(tracks.length ? tracks : [null]).map((a, i) => <span key={a?.id ?? 'none'} className="tl-label lane-row">{i === 0 ? 'Audio' : ''}</span>)}
+          </div>
+        </div>
         <div ref={wrapRef} className="tl-wrap"
           onPointerDown={(e) => { dragging.current = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* штучна подія без реального вказівника */ } seekFromPointer(e.clientX); }}
           onPointerMove={(e) => { if (dragging.current) seekFromPointer(e.clientX); }}
@@ -89,6 +97,8 @@ export function Timeline({ project, t, selection, onSeek, onSelect, onDuration, 
               </div>
             ))}
           </div>
+          <div className="tl-lanes">
+          {tracks.length === 0 && <div className="lane-row lane-empty">No audio: use + Audio or drop a sound file</div>}
           {tracks.map((a) => {
             const len = (a.out - a.in) / a.speed;
             const end = a.loop ? Math.max(total, a.start + len) : a.start + len;
@@ -106,8 +116,10 @@ export function Timeline({ project, t, selection, onSeek, onSelect, onDuration, 
               </div>
             );
           })}
+          </div>
           <div className="playhead" style={{ left: `${(Math.min(t, total) / total) * 100}%` }} />
         </div>
+        </>
       )}
     </section>
   );

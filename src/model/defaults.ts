@@ -63,7 +63,14 @@ export const DEFAULT_SAFE_ZONES: SafeZone[] = [
   mk('uxpub', 'UXPUB', '#00d08a'),
   mk('medium', 'Medium', '#ffb000'),
   { id: 'instagram', name: 'Instagram Reels / Stories', color: '#ff3b8d', top: 0.14, right: 0.06, bottom: 0.35, left: 0.06, visible: false, source: 'unverified',
-    note: 'Figures come from third-party guides that cite Meta (14% top, 35% bottom, 6% sides). Not confirmed on an official Meta page.' },
+    note: 'Figures come from third-party guides that cite Meta (14% top, 35% bottom, 6% sides). Not confirmed on an official Meta page. Some sources say 40% at the bottom for ads with a disclaimer.' },
+  // 1080×1350 (4:5): профіль показує плитку 3:4, тож із боків обрізається ~34 px (3.1%). Для квадрата 1:1 це вже по 12.5% з боків.
+  { id: 'instagram-post', name: 'Instagram Post (profile grid)', color: '#ff8a3d', top: 0, right: 0.031, bottom: 0, left: 0.031, visible: false, source: 'unverified',
+    note: 'The profile grid shows posts as 3:4 tiles. For a 4:5 post (1080×1350) about 3.1% is cut from each side; for a square 1:1 post it is 12.5%. Third-party sources, not confirmed on an official Instagram page.' },
+  { id: 'tiktok', name: 'TikTok', color: '#22d3ee', top: 0.08, right: 0.13, bottom: 0.25, left: 0.04, visible: false, source: 'unverified',
+    note: 'Third-party sources disagree (top 100–150 px, bottom 250–480 px, right 100–140 px on 1080×1920). This is a middle value. TikTok publishes an official template on its ads help pages: check it before publishing.' },
+  { id: 'youtube-shorts', name: 'YouTube Shorts', color: '#ff3b3b', top: 0.15, right: 0.178, bottom: 0.35, left: 0.044, visible: false, source: 'unverified',
+    note: 'Figures attributed to Google for vertical video ads (288 px top, 672 px bottom, 192 px right, 48 px left on 1080×1920), reported by third-party sites. Other sources give smaller margins.' },
 ];
 
 export const DEFAULT_STAGE: Stage = { slot: { x: 0, y: 0, w: 1, h: 1 }, radius: 0, shadow: 0 };

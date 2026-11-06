@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { fileToDataUrl, loadImage } from './assets';
+import { loadAutosave, saveAutosave } from './autosave';
 import { engine, readAudio, soloEngine } from './audio/audio';
 import { audioPlan, type PlanItem } from './audio/plan';
 import { isMediaFile, readMedia, type ReadMedia } from './media/readMedia';
@@ -255,6 +256,44 @@ export function App() {
     }
   }, [seek, selectOne]);
 
+  // Автозбереження: після оновлення сторінки повертаємо останній стан. Зберігати починаємо лише після спроби відновлення, інакше порожній проєкт затер би збережений.
+  const [autosaveReady, setAutosaveReady] = useState(false);
+  useEffect(() => {
+    let cancel = false;
+    void (async () => {
+      try {
+        const text = await loadAutosave();
+        if (text && !cancel) {
+          const parsed = parseProject(text);
+          if (parsed.frames.length > 0 || (parsed.audio?.length ?? 0) > 0) {
+            const loaded = await loadAssets(parsed);
+            if (cancel) return;
+            setAssets((prev) => new Map([...prev, ...loaded]));
+            setProject(parsed);
+            selectOne(parsed.frames[0]?.id ?? null);
+            flash('Restored your last session');
+          }
+        }
+      } catch { /* автозбереження пошкоджене або недоступне: стартуємо з чистого проєкту */ }
+      if (!cancel) setAutosaveReady(true);
+    })();
+    return () => { cancel = true; };
+  }, [selectOne, flash]);
+  useEffect(() => {
+    if (!autosaveReady) return;
+    const id = setTimeout(() => { void saveAutosave(serializeProject(project)).catch(() => undefined); }, 1500);
+    return () => clearTimeout(id);
+  }, [project, autosaveReady]);
+
+  const newProjectClick = useCallback(() => {
+    if (!window.confirm('Start a new project? Unsaved changes will be lost.')) return;
+    fileHandle.current = null;
+    setProject(newProject('1:1'));
+    selectOne(null);
+    setPlaying(false);
+    seek(0);
+  }, [selectOne, seek]);
+
   const requestOpen = useCallback(async () => {
     if (!canPick) { openRef.current?.click(); return; }
     try {
@@ -411,6 +450,7 @@ export function App() {
       <header className="topbar">
         <input className="name" value={project.name ?? ''} placeholder="Untitled" aria-label="Project name" maxLength={60}
           onChange={(e) => setProject((p) => setProjectName(p, e.target.value))} />
+        <button data-tip="Start an empty project" onClick={newProjectClick}>New</button>
         <button data-tip="Open a saved project · ⌘ O" onClick={() => void requestOpen()}>Open</button>
         <button data-tip="Save project to keep editing later · ⌘ S" onClick={() => void saveProject()}>Save</button>
         <button data-tip="Save project to a new file · ⌘ ⇧ S" onClick={() => void saveProject(true)}>Save as</button>

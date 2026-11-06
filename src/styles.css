@@ -405,7 +405,7 @@ button.icon.danger:hover:not(:disabled) { color: var(--danger); }
 
 /* --- Звук: смуги на таймлайні, кнопка в транспорті --- */
 .timeline { align-items: stretch; overflow-y: auto; }
-.tl-wrap { position: relative; width: 100%; display: flex; flex-direction: column; gap: 4px; min-height: 0; touch-action: none; cursor: pointer; user-select: none; }
+.tl-wrap { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; min-height: 0; touch-action: none; cursor: pointer; user-select: none; }
 .tl-wrap > .bar { flex: 1 1 auto; height: auto; min-height: 44px; max-height: 120px; }
 .lane-row { position: relative; flex: none; height: 28px; overflow: hidden; }
 .lane { position: absolute; top: 0; bottom: 0; background: var(--fill); color: var(--accent-text); cursor: grab; overflow: hidden; }
@@ -418,3 +418,9 @@ button.icon.danger:hover:not(:disabled) { color: var(--danger); }
 .lane-h:hover { background: color-mix(in srgb, var(--ink) 45%, transparent); }
 .transport .addaudio { height: 100%; background: transparent; }
 .orig-chip { display: flex; align-items: center; padding: 0 12px; color: var(--accent-text); }
+.timeline { gap: 8px; }
+.tl-gutter { flex: none; width: 48px; display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 11px; }
+.tl-gutter .tl-frames { flex: 1 1 auto; min-height: 44px; max-height: 120px; display: flex; align-items: center; }
+.tl-lanes { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.tl-label.lane-row { display: flex; align-items: center; height: 28px; }
+.lane-empty { display: flex; align-items: center; padding: 0 8px; color: var(--muted); font-size: 11px; background: var(--fill); opacity: .6; }
