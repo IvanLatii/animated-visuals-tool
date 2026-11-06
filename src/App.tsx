@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { fileToDataUrl, loadImage } from './assets';
+import { engine, readAudio, soloEngine } from './audio/audio';
+import { audioPlan, type PlanItem } from './audio/plan';
 import { isMediaFile, readMedia, type ReadMedia } from './media/readMedia';
 import { ExportPanel } from './components/ExportPanel';
 import { Sidebar, type Target } from './components/Sidebar';
@@ -20,9 +22,10 @@ import { parseProject, projectFileName, serializeProject } from './model/project
 import { canPick, downloadText, isAbort, pickOpenHandle, pickSaveHandle, writeHandle, type FileHandle } from './projectIO';
 import { buildTimeline, layerAsset, loadAssets, projectDuration, type Assets } from './render/renderScene';
 import { canEyedrop, eyedrop } from './eyedropper';
-import { addFillLayer, setBackground, setLayerFill, addFrames, addLayer, applyLayerPatches, moveLayer, nudgeLayers, removeLayer, replaceLayer, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
+import { addAudio, newAudioTrack, removeAudio, updateAudio, addFillLayer, setBackground, setLayerFill, addFrames, addLayer, applyLayerPatches, moveLayer, nudgeLayers, removeLayer, replaceLayer, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
+const isAudioFile = (f: File) => f.type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg|oga|flac)$/i.test(f.name);
 
 /** Чи Іван зараз друкує. strict = true: будь-яке поле вводу (для стрілок), інакше прості контроли (чекбокс, повзунок, кнопка) не рахуються. */
 const isTyping = (t: EventTarget | null, strict = false) => t instanceof HTMLElement && (t.isContentEditable || ['TEXTAREA', 'SELECT'].includes(t.tagName) || t.getAttribute('aria-haspopup') === 'listbox'
@@ -58,14 +61,23 @@ export function App() {
   const { undo, redo, canUndo, canRedo } = useHistory(project, applyProject, 10);
   const [layerSel, setLayerSel] = useState<'background' | 'overlay' | null>(null); // вибраний шар-картинка в Layers (фон або накладка)
   const [activeLayer, setActiveLayer] = useState(0); // вибраний шар усередині кадру (0 — нижній); значення поза межами означає верхній
-  const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); setLayerSel(null); setActiveLayer(0); anchor.current = id; }, []);
-  const selectLayer = useCallback((kind: 'background' | 'overlay') => { setSelection([]); setLayerSel(kind); anchor.current = null; }, []);
-  const target: Target = selection.length > 0 ? 'frames' : layerSel ?? 'project'; // що показує Inspector
+  const [audioSel, setAudioSel] = useState<string | null>(null); // вибрана доріжка звуку
+  const [original, setOriginal] = useState(false); // поки затиснуто «O» чи кнопку: слухаємо оригінал без налаштувань
+  const [previewing, setPreviewing] = useState<string | null>(null); // доріжка, що грає окремо
+  const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); setLayerSel(null); setActiveLayer(0); setAudioSel(null); anchor.current = id; }, []);
+  const selectLayer = useCallback((kind: 'background' | 'overlay') => { setSelection([]); setLayerSel(kind); setAudioSel(null); anchor.current = null; }, []);
+  const target: Target = audioSel ? 'audio' : selection.length > 0 ? 'frames' : layerSel ?? 'project'; // що показує Inspector
   const selectedFrame = project.frames.find((f) => f.id === selectedId);
   const selImg = selectedFrame ? layerAsset(selectedFrame.layers[Math.min(activeLayer, selectedFrame.layers.length - 1)], assets, project.stage.slot.w * project.canvas.w, project.stage.slot.h * project.canvas.h) : undefined;
   const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
 
   const seek = useCallback((time: number) => { tRef.current = time; setT(time); }, []);
+  const plan = useMemo(() => audioPlan(project, original), [project, original]);
+  const planRef = useRef(plan);
+  const playingRef = useRef(false);
+  useEffect(() => { planRef.current = plan; }, [plan]);
+  /** Перемотування користувачем: якщо йде програвання, звук теж стартує з нового місця. */
+  const jump = useCallback((time: number) => { seek(time); if (playingRef.current) void engine.play(planRef.current, time); }, [seek]);
   const pendingSeek = useRef<string | null>(null);
   useEffect(() => { // щойно доданий кадр одразу видно на сцені
     if (!pendingSeek.current) return;
@@ -77,7 +89,7 @@ export function App() {
     if (mode === 'single') {
       selectOne(id);
       const it = buildTimeline(project).items.find((x) => x.rf.frame.id === id);
-      if (it) seek(it.start); // на сцені одразу видно вибраний кадр
+      if (it) jump(it.start); // на сцені одразу видно вибраний кадр
       return;
     }
     const order = project.frames.map((f) => f.id);
@@ -92,10 +104,25 @@ export function App() {
     const range = order.slice(lo, hi + 1);
     setLayerSel(null);
     setSelection(a > b ? range.reverse() : range); // натиснутий кадр стає останнім — основним
-  }, [project, selectedId, selectOne, seek]);
+  }, [project, selectedId, selectOne, jump]);
+
+  const addAudioFile = useCallback(async (file: File) => {
+    try {
+      const { src, duration } = await readAudio(file);
+      const track = newAudioTrack(file.name.replace(/\.[^.]+$/, ''), src, duration, tRef.current); // звук лягає там, де зараз курсор
+      setProject((p) => addAudio(p, track));
+      selectOne(null);
+      setAudioSel(track.id);
+      setError(null);
+    } catch (e) {
+      setError(`Could not open "${file.name}": ${e instanceof Error ? e.message : 'unknown error'}`);
+    }
+  }, [selectOne]);
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
+    for (const f of [...files].filter(isAudioFile)) void addAudioFile(f);
     const media = [...files].filter(isMediaFile);
+    if (media.length === 0 && [...files].some(isAudioFile)) return;
     if (media.length === 0) { setError('Unsupported file. Use PNG, JPG, WebP, GIF or a video (MP4, WebM).'); return; }
     setError(null);
     const loaded: { frame: ReturnType<typeof newFrame>; read: ReadMedia }[] = [];
@@ -116,7 +143,7 @@ export function App() {
     setProject((p) => addFrames(p, loaded.map((l) => l.frame)));
     selectOne(loaded[loaded.length - 1].frame.id);
     pendingSeek.current = loaded[loaded.length - 1].frame.id; // після оновлення проєкту перемотаємо до цього кадру
-  }, [selectOne]);
+  }, [selectOne, addAudioFile]);
 
   /** Додає картинку, GIF чи відео шаром поверх вибраного кадру. */
   const addLayerFile = useCallback(async (id: string, file: File) => {
@@ -246,7 +273,7 @@ export function App() {
       const next = tRef.current + (now - last) / 1000;
       last = now;
       if (next >= duration) {
-        if (loop && duration > 0) seek(next % duration);
+        if (loop && duration > 0) { seek(next % duration); void engine.play(planRef.current, next % duration); }
         else { seek(duration); setPlaying(false); return; }
       } else seek(next);
       raf = requestAnimationFrame(tick);
@@ -257,6 +284,7 @@ export function App() {
 
   const togglePlay = useCallback(() => {
     if (duration <= 0) return;
+    soloEngine.stop(); setPreviewing(null);
     if (!playing && tRef.current >= duration) seek(0);
     setPlaying((p) => !p);
   }, [duration, playing, seek]);
@@ -280,11 +308,30 @@ export function App() {
       if (e.key !== 'Alt') clean = false; // будь-яка інша клавіша разом з Alt — це вже комбінація
       else if (!e.repeat) clean = !e.metaKey && !e.ctrlKey && !e.shiftKey;
     };
-    const up = (e: KeyboardEvent) => { if (e.key === 'Alt' && clean && !exportOpen && !isTyping(e.target, true)) seek(0); clean = false; };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Alt' && clean && !exportOpen && !isTyping(e.target, true)) jump(0); clean = false; };
     const cancel = () => { clean = false; };
     window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('pointerdown', cancel, true);
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('pointerdown', cancel, true); };
-  }, [seek, exportOpen]);
+  }, [jump, exportOpen]);
+
+  // Звук грає разом зі сценою; зміна плану (гучність, mute, оригінал...) під час програвання перезапускає його з поточного місця.
+  useEffect(() => {
+    playingRef.current = playing;
+    if (!playing) { engine.stop(); return; }
+    void engine.play(plan, tRef.current);
+    return () => engine.stop();
+  }, [playing, plan]);
+
+  /** Окреме прослуховування доріжки (з її початку, зі її налаштуваннями, без сцени). */
+  const previewTrack = useCallback((id: string) => {
+    if (previewing === id) { soloEngine.stop(); setPreviewing(null); return; }
+    const a = project.audio?.find((x) => x.id === id);
+    if (!a) return;
+    setPlaying(false);
+    const it: PlanItem = { key: a.id, src: a.src, start: 0, until: (a.out - a.in) / a.speed, inPt: a.in, outPt: a.out, speed: a.speed, loop: false, volume: a.volume, fadeIn: a.fadeIn, fadeOut: a.fadeOut };
+    setPreviewing(id);
+    void soloEngine.play([it], 0, () => setPreviewing(null));
+  }, [previewing, project.audio]);
 
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { saveLayout(layout); }, [layout]);
@@ -297,7 +344,7 @@ export function App() {
       const cur = Math.max(0, items.findIndex((it) => it.rf.frame.id === selectedId));
       const next = items[Math.min(items.length - 1, Math.max(0, cur + step))];
       selectOne(next.rf.frame.id);
-      seek(next.start);
+      jump(next.start);
     };
     const onDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
@@ -322,7 +369,8 @@ export function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey || exportOpen) return;
-      if (e.key === 'Home' && !isTyping(e.target, true)) { e.preventDefault(); seek(0); return; } // Home — таймлайн на початок (так само Alt, натиснутий окремо)
+      if (e.key === 'Home' && !isTyping(e.target, true)) { e.preventDefault(); jump(0); return; } // Home — таймлайн на початок (так само Alt, натиснутий окремо)
+      if (key === 'o' && !e.repeat && (project.audio?.length ?? 0) > 0 && !isTyping(e.target, true)) { setOriginal(true); return; } // затиснути O — слухати оригінал звуку
       if (key === 'i' && !e.repeat && !isTyping(e.target, true)) { e.preventDefault(); void pipette(); return; } // I — піпетка
       const arrow = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key);
       if (e.code === 'Space' && !e.repeat && !isTyping(e.target)) { e.preventDefault(); togglePlay(); }
@@ -335,17 +383,18 @@ export function App() {
       }
       else if (e.key === 'ArrowLeft' && !isTyping(e.target, true)) { e.preventDefault(); goToFrame(-1); }
       else if (e.key === 'ArrowRight' && !isTyping(e.target, true)) { e.preventDefault(); goToFrame(1); }
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && audioSel && !isTyping(e.target, true)) { e.preventDefault(); setProject((p) => removeAudio(p, audioSel)); setAudioSel(null); }
       else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length > 0 && !isTyping(e.target, true)) {
         e.preventDefault();
         setProject((p) => selection.reduce(removeFrame, p));
         selectOne(null);
       }
     };
-    const onUp = (e: KeyboardEvent) => { if (e.code === 'Space' && !isTyping(e.target) && !exportOpen) e.preventDefault(); }; // щоб Space не «натискав» кнопку у фокусі
+    const onUp = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'o') setOriginal(false); if (e.code === 'Space' && !isTyping(e.target) && !exportOpen) e.preventDefault(); }; // щоб Space не «натискав» кнопку у фокусі
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen, undo, redo, activeLayer, pipette]);
+  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen, undo, redo, activeLayer, pipette, jump, audioSel]);
 
   return (
     <div className={`app ${dropping ? 'dropping' : ''}`}
@@ -392,10 +441,11 @@ export function App() {
         <Preview project={project} assets={assets} t={t} editSlot={editSlot} onSlot={(r) => setProject((p) => setSlot(p, r))}
           selection={selection} onDeselect={() => selectOne(null)} keep={keepProportions} activeLayer={activeLayer} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches, activeLayer))}
           canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} playing={playing} loop={loop} duration={duration}
-          onTogglePlay={togglePlay} onToggleLoop={setLoop} />
+          onTogglePlay={togglePlay} onToggleLoop={setLoop} onAddAudio={(f) => void addAudioFile(f)} original={original && (project.audio?.length ?? 0) > 0} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
-        <Timeline project={project} t={t} selection={selection} onSeek={seek} onSelect={selectOne}
+        <Timeline project={project} t={t} selection={selection} onSeek={jump} onSelect={selectOne}
+          audioSel={audioSel} onSelectAudio={(id) => { selectOne(null); setAudioSel(id); }} onAudio={(id, patch) => setProject((p) => updateAudio(p, id, patch))}
           onDuration={(id, d, trim) => setProject((p) => setFrameDuration(p, id, d, trim ? 'trim' : undefined))} />
       </div>
       <Resizer axis="x" invert label="Right panel width" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
@@ -404,6 +454,7 @@ export function App() {
         exportSettings={exportSettings} onExportSettings={setExportSettings}
         keep={keepProportions} onKeep={setKeepProportions}
         frameLayers={{ li: activeLayer, onSelect: setActiveLayer, onAdd: (id, f) => void addLayerFile(id, f), onRemove: (id, i) => { setProject((p) => removeLayer(p, id, i)); setActiveLayer(0); }, onReplace: (id, i, f) => void replaceLayerFile(id, i, f), onMove: moveLayerTo, onAddFill: (id, c) => { setProject((p) => addFillLayer(p, id, c)); setActiveLayer(0); } }}
+        audio={{ id: audioSel, previewing: previewing === audioSel, onPreview: () => audioSel && previewTrack(audioSel), onOriginal: setOriginal, onRemove: () => { if (audioSel) setProject((p) => removeAudio(p, audioSel)); setAudioSel(null); } }}
         slot={{ selectedImage, editSlot, onEditSlot: setEditSlot }}
         layer={{ onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => { setProject((p) => setStageImage(p, k, undefined)); setLayerSel(null); } }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />

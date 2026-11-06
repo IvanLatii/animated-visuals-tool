@@ -64,7 +64,7 @@ export function parsePresets(text: string): Preset[] {
 }
 
 // Стартові пресети — для наочності й швидкого старту; їх не можна видалити. Без прив'язки до конкретних соцмереж.
-const STARTER_EXPORT: ExportSettings = { format: 'mp4', fps: 30, mode: 'balanced', scale: 1, gifQuality: 90, mp4Mbps: 4 };
+const STARTER_EXPORT: ExportSettings = { format: 'mp4', fps: 30, mode: 'balanced', scale: 1, gifQuality: 90, mp4Mbps: 4, audio: true };
 
 const starter = (id: string, name: string, canvas: PresetData['canvas'], defaults: Partial<Defaults>, stage?: PresetData['stage']): Preset => ({
   id: `starter-${id}`, name,

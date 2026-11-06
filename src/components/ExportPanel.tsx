@@ -4,6 +4,7 @@ import { exportAll } from '../export/exportAll';
 import { gifMemoryBytes } from '../export/exportGif';
 import { fitToSize } from '../export/fit';
 import { settingsFromJob, toJob, type ExportSettings, type QualityMode } from '../export/presets';
+import { hasAudio } from '../audio/plan';
 import { ExportAborted, exportSize, mp4IsCapped } from '../export/renderFrames';
 import { canPick, pickExportHandle, writeHandle, type FileHandle } from '../projectIO';
 import type { ExportJob, Project } from '../model/types';
@@ -167,6 +168,8 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
                 <div className="grp">Quality</div>
                 <Seg label="Frames per second" value={s.fps} onChange={(fps) => set({ fps })} options={[24, 30, 60].map((f) => ({ id: f, label: `${f} fps` }))} />
                 <Seg label="Quality" value={s.mode} onChange={(mode) => set({ mode })} options={MODES} />
+                {s.format === 'mp4' && hasAudio(project) && <CheckRow label="Include audio" checked={s.audio !== false} onChange={(audio) => set({ audio })} />}
+                {s.format === 'gif' && hasAudio(project) && <Hint>GIF has no sound. Use MP4 to keep the audio.</Hint>}
                 {s.mode === 'custom' && (
                   <>
                     {s.format === 'gif'
@@ -199,7 +202,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
           ) : result ? (
             <>
               <div className="result-media">
-                {result.format === 'mp4' ? <video src={result.url} controls loop muted playsInline /> : <img src={result.url} alt="Export result" />}
+                {result.format === 'mp4' ? <video src={result.url} controls loop muted={s.audio === false} playsInline /> : <img src={result.url} alt="Export result" />}
               </div>
               <div className="result-info">
                 <Row label={result.name}><b className={`val ${!isPng && result.bytes > targetMb * 1e6 ? 'over' : ''}`}>{mb(result.bytes)}</b></Row>

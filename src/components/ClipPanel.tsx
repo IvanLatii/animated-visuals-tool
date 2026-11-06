@@ -29,6 +29,7 @@ export function ClipPanel({ project, selection, onChange, li }: Props) {
         {SPEEDS.map((s) => <button key={s} className={Math.abs(clip.speed - s) < 1e-6 ? 'on' : ''} onClick={() => patch({ speed: s })}>{s}×</button>)}
       </div>
       <Row label="Loop"><input type="checkbox" checked={clip.loop} onChange={(e) => patch({ loop: e.target.checked })} /></Row>
+      {clip.kind === 'video' && <Row label="Use sound from video"><input type="checkbox" checked={!!clip.sound} onChange={(e) => patch({ sound: e.target.checked })} /></Row>}
     </Section>
   );
 }

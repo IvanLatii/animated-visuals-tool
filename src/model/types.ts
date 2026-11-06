@@ -44,6 +44,29 @@ export interface ClipInfo {
   loop: boolean;
   /** Мініатюра першого кадру (data URL) для списків і таймлайну. */
   poster: string;
+  /** Використати звук із відео (за замовчуванням ні: звук відео ігнорується). */
+  sound?: boolean;
+}
+
+/** Доріжка звуку на таймлайні. Час — секунди сцени; in/out — відрізок джерела. */
+export interface AudioTrack {
+  id: string;
+  name: string;
+  /** data URL файлу (у JSON проєкту лежить усередині). */
+  src: string;
+  /** Повна довжина файлу, с. */
+  duration: number;
+  /** Де на таймлайні починається доріжка. */
+  start: number;
+  in: number; out: number;
+  /** 0–2 (1 = як є). */
+  volume: number;
+  muted: boolean; solo: boolean;
+  fadeIn: number; fadeOut: number;
+  /** Звук коротший за сцену: повторювати до кінця. */
+  loop: boolean;
+  /** Швидкість (тон змінюється разом із нею). */
+  speed: number;
 }
 
 export interface ImageLayer {
@@ -154,6 +177,8 @@ export interface Project {
     safeZones: SafeZone[];
   };
   frames: Frame[];
+  /** Доріжки звуку (кілька, змішуються). */
+  audio?: AudioTrack[];
   defaults: Defaults;
   stage: Stage;
 }
@@ -168,4 +193,6 @@ export interface ExportJob {
   gif?: { quality: number };
   /** Лише MP4: біт/с */
   mp4?: { bitrate: number };
+  /** Лише MP4: додати звук (за замовчуванням так). */
+  audio?: boolean;
 }

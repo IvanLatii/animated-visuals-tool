@@ -1,6 +1,6 @@
 import { CANVAS_PRESETS, clipLength, frameDuration, imageLayer } from '../model/defaults';
 import type { MotionProfile } from '../model/profiles';
-import type { AsciiSettings, ClipInfo, Frame, Layer, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
+import type { AsciiSettings, AudioTrack, ClipInfo, Frame, Layer, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
 
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
 
@@ -30,7 +30,7 @@ export function replaceFrameImage(project: Project, id: string, src: string, nam
 }
 
 /** Зміна параметрів кліпу кадру. Довжина (початок, кінець, швидкість) міняє тривалість кадру, тож власну тривалість знімаємо: кадр знову слідує за кліпом. */
-export function setClip(project: Project, ids: string[], patch: Partial<Pick<ClipInfo, 'start' | 'end' | 'speed' | 'loop'>>, li?: number): Project {
+export function setClip(project: Project, ids: string[], patch: Partial<Pick<ClipInfo, 'start' | 'end' | 'speed' | 'loop' | 'sound'>>, li?: number): Project {
   const lengthChanges = patch.start !== undefined || patch.end !== undefined || patch.speed !== undefined;
   return {
     ...project,
@@ -349,4 +349,34 @@ export function applyLayerPatches(project: Project, patches: Record<string, Laye
     const at = Math.min(li, f.layers.length - 1);
     return { ...f, layers: f.layers.map((l, i) => (i === at ? { ...l, ...patches[f.id] } : l)) };
   }) };
+}
+
+// --- Звук ---
+export function newAudioTrack(name: string, src: string, duration: number, start = 0): AudioTrack {
+  return { id: crypto.randomUUID(), name, src, duration, start, in: 0, out: duration, volume: 1, muted: false, solo: false, fadeIn: 0, fadeOut: 0, loop: false, speed: 1 };
+}
+export function addAudio(project: Project, track: AudioTrack): Project {
+  return { ...project, audio: [...(project.audio ?? []), track] };
+}
+export function updateAudio(project: Project, id: string, patch: Partial<Omit<AudioTrack, 'id' | 'src' | 'duration'>>): Project {
+  return { ...project, audio: (project.audio ?? []).map((a) => {
+    if (a.id !== id) return a;
+    const n = { ...a, ...patch };
+    n.start = Math.max(0, n.start);
+    n.in = Math.min(Math.max(0, n.in), Math.max(0, a.duration - 0.05));
+    n.out = Math.min(a.duration, Math.max(n.in + 0.05, n.out));
+    n.speed = Math.min(4, Math.max(0.25, n.speed));
+    n.volume = Math.min(2, Math.max(0, n.volume));
+    const len = (n.out - n.in) / n.speed;
+    n.fadeIn = Math.min(Math.max(0, n.fadeIn), len);
+    n.fadeOut = Math.min(Math.max(0, n.fadeOut), len);
+    return n;
+  }) };
+}
+export function removeAudio(project: Project, id: string): Project {
+  return { ...project, audio: (project.audio ?? []).filter((a) => a.id !== id) };
+}
+/** Усі налаштування звуку назад до початкових (файл і назва лишаються). */
+export function resetAudio(project: Project, id: string): Project {
+  return updateAudio(project, id, { start: 0, in: 0, out: Infinity, volume: 1, muted: false, solo: false, fadeIn: 0, fadeOut: 0, loop: false, speed: 1 });
 }

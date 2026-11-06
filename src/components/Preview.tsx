@@ -26,6 +26,9 @@ interface Props {
   duration: number;
   onTogglePlay: () => void;
   onToggleLoop: (v: boolean) => void;
+  onAddAudio: (f: File) => void;
+  /** Зараз у сцені грає оригінал звуку (затиснуто O). */
+  original: boolean;
 }
 
 const PAD_X = 56, PAD_Y = 52; // місце для кутових рисок і підписів навколо артборда
@@ -36,8 +39,9 @@ const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 interface View { zoom: number; x: number; y: number } // zoom = множник відносно «вмістити», x/y — зсув у пікселях екрана
 
-export function Preview({ project, assets, t, editSlot, onSlot, selection, onDeselect, keep, activeLayer, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, editSlot, onSlot, selection, onDeselect, keep, activeLayer, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop, onAddAudio, original }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -213,6 +217,9 @@ export function Preview({ project, assets, t, editSlot, onSlot, selection, onDes
           {playing ? <PauseIcon /> : <PlayIcon />}{playing ? 'Pause' : 'Play'}
         </button>
         <button className={`loop ${loop ? 'on' : ''}`} aria-pressed={loop} aria-label="Loop" data-tip="Loop playback" data-tip-pos="top" onClick={() => onToggleLoop(!loop)}><LoopIcon /></button>
+        <button className="addaudio" data-tip="Add an audio track (MP3, WAV, M4A, OGG) · or drop the file" data-tip-pos="top" onClick={() => audioRef.current?.click()}>+ Audio</button>
+        <input ref={audioRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onAddAudio(f); e.target.value = ''; }} />
+        {original && <span className="orig-chip">Original audio</span>}
         <span className="time">{Math.min(t, duration).toFixed(2)} / {duration.toFixed(2)} s</span>
       </div>
     </section>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ExportSettings } from '../export/presets';
 import type { Assets } from '../render/renderScene';
 import type { Project } from '../model/types';
+import { AudioPanel } from './AudioPanel';
 import { AsciiPanel } from './AsciiPanel';
 import { ClipPanel } from './ClipPanel';
 import { FrameLayers } from './FrameLayers';
@@ -16,7 +17,7 @@ import { Section, Tabs } from './ui';
 import * as A from '../state/projectActions';
 
 /** Що зараз вибрано в Layers: від цього залежить вміст Inspector. */
-export type Target = 'project' | 'frames' | 'background' | 'overlay';
+export type Target = 'project' | 'frames' | 'background' | 'overlay' | 'audio';
 type Tab = 'design' | 'animate';
 
 interface Props {
@@ -33,6 +34,7 @@ interface Props {
   onKeep: (v: boolean) => void;
   frameLayers: { li: number; onSelect: (i: number) => void; onAdd: (id: string, f: File) => void; onRemove: (id: string, i: number) => void; onReplace: (id: string, i: number, f: File) => void; onMove: (id: string, from: number, to: number) => void; onAddFill: (id: string, color: string) => void };
   layer: Pick<React.ComponentProps<typeof LayerDesign>, 'onPickImage' | 'onClearImage'>;
+  audio: { id: string | null } & Pick<React.ComponentProps<typeof AudioPanel>, 'previewing' | 'onPreview' | 'onOriginal' | 'onRemove'>;
 }
 
 /**
@@ -42,11 +44,12 @@ interface Props {
  *  фон або накладка → їхні властивості.
  * Новий тип шару — це новий рядок у Layers і новий розділ тут, без переносів.
  */
-export function Sidebar({ project, target, selection, assets, duration, exportSettings, onChange, onExportSettings, slot, keep, onKeep, layer, frameLayers }: Props) {
+export function Sidebar({ project, target, selection, assets, duration, exportSettings, onChange, onExportSettings, slot, keep, onKeep, layer, frameLayers, audio }: Props) {
   const [tab, setTab] = useState<Tab>('design');
   const isLayer = target === 'background' || target === 'overlay';
-  const active: Tab = isLayer ? 'design' : tab; // у шарів-картинок лише одна вкладка
-  const tabs: { id: Tab; label: string }[] = isLayer
+  const isAudio = target === 'audio';
+  const active: Tab = isLayer || isAudio ? 'design' : tab; // у шарів-картинок і звуку лише одна вкладка
+  const tabs: { id: Tab; label: string }[] = isAudio ? [{ id: 'design', label: 'Audio' }] : isLayer
     ? [{ id: 'design', label: target === 'background' ? 'Background' : 'Overlay' }]
     : [{ id: 'design', label: target === 'frames' ? 'Image' : 'Design' }, { id: 'animate', label: 'Animation' }];
 
@@ -58,6 +61,7 @@ export function Sidebar({ project, target, selection, assets, duration, exportSe
         {active === 'design' && target === 'frames' && <SelectionPanel project={project} selection={selection} assets={assets} onChange={onChange} keep={keep} onKeep={onKeep} li={frameLayers.li} />}
         {active === 'design' && target === 'frames' && <ClipPanel project={project} selection={selection} onChange={onChange} li={frameLayers.li} />}
         {active === 'design' && target === 'frames' && <AsciiPanel project={project} selection={selection} onChange={onChange} />}
+        {isAudio && audio.id && <AudioPanel project={project} id={audio.id} onChange={onChange} previewing={audio.previewing} onPreview={audio.onPreview} onOriginal={audio.onOriginal} onRemove={audio.onRemove} />}
         {active === 'design' && isLayer && <LayerDesign project={project} kind={target} assets={assets} onChange={onChange} {...layer} />}
         {active === 'design' && target === 'project' && (
           <>

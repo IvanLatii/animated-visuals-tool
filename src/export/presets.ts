@@ -11,9 +11,11 @@ export interface ExportSettings {
   /** Використовується в режимі «Вручну» */
   gifQuality: number;
   mp4Mbps: number;
+  /** Додати звук у MP4. */
+  audio: boolean;
 }
 
-export const DEFAULT_SETTINGS: ExportSettings = { format: 'mp4', fps: 30, mode: 'balanced', scale: 1, gifQuality: 90, mp4Mbps: 4 };
+export const DEFAULT_SETTINGS: ExportSettings = { format: 'mp4', fps: 30, mode: 'balanced', scale: 1, gifQuality: 90, mp4Mbps: 4, audio: true };
 
 // Біт на піксель на кадр: від нього залежить, скільки «важить» відео при будь-якому розмірі.
 export const MP4_BPP = { max: 0.25, balanced: 0.12, small: 0.05 } as const;
@@ -26,7 +28,7 @@ export function toJob(project: Project, s: ExportSettings): ExportJob {
   if (s.format === 'png') return { format: 'png', fps: s.fps, scale: s.scale };
   if (s.format === 'mp4') {
     const bitrate = s.mode === 'custom' ? s.mp4Mbps * 1e6 : w * h * s.fps * MP4_BPP[s.mode];
-    return { format: 'mp4', fps: s.fps, scale: s.scale, mp4: { bitrate } };
+    return { format: 'mp4', fps: s.fps, scale: s.scale, mp4: { bitrate }, audio: s.audio !== false };
   }
   const quality = s.mode === 'custom' ? s.gifQuality : GIF_QUALITY[s.mode];
   return { format: 'gif', fps: s.fps, scale: s.scale, gif: { quality } };
