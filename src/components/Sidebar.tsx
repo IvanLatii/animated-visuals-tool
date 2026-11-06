@@ -3,6 +3,7 @@ import type { ExportSettings } from '../export/presets';
 import type { Assets } from '../render/renderScene';
 import type { Project } from '../model/types';
 import { AsciiPanel } from './AsciiPanel';
+import { ClipPanel } from './ClipPanel';
 import { AnimatePanel } from './AnimatePanel';
 import { CanvasControls } from './CanvasControls';
 import { LayerDesign } from './LayerDesign';
@@ -52,6 +53,7 @@ export function Sidebar({ project, target, selection, assets, duration, exportSe
       <Tabs label="Inspector" value={active} onChange={setTab} options={tabs} />
       <div className="side-scroll">
         {active === 'design' && target === 'frames' && <SelectionPanel project={project} selection={selection} assets={assets} onChange={onChange} keep={keep} onKeep={onKeep} />}
+        {active === 'design' && target === 'frames' && <ClipPanel project={project} selection={selection} onChange={onChange} />}
         {active === 'design' && target === 'frames' && <AsciiPanel project={project} selection={selection} onChange={onChange} />}
         {active === 'design' && isLayer && <LayerDesign project={project} kind={target} assets={assets} onChange={onChange} {...layer} />}
         {active === 'design' && target === 'project' && (

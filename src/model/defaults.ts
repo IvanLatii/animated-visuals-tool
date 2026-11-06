@@ -1,4 +1,4 @@
-import type { Defaults, Easing, Frame, Layer, Motion, MotionType, Project, SafeZone, Stage, Transition, TransitionType } from './types';
+import type { ClipInfo, Defaults, Easing, Frame, Layer, Motion, MotionType, Project, SafeZone, Stage, Transition, TransitionType } from './types';
 
 export const CANVAS_PRESETS = {
   '1:1': { w: 1080, h: 1080 },
@@ -41,6 +41,7 @@ export const DEFAULTS: Defaults = {
   layerFit: 'fit', // зображення видно цілком, без обрізання; «Fill» вмикається окремо
   motion: DEFAULT_MOTION,
   transitionOut: DEFAULT_TRANSITION,
+  clipFit: 'speed', // зміна тривалості кадру з відео міняє швидкість (кліп лишається цілим)
 };
 
 export function imageLayer(src: string): Layer {
@@ -86,11 +87,30 @@ export interface ResolvedFrame {
   transitionOut: Transition;
 }
 
+/** Тривалість відрізка кліпу з урахуванням швидкості. */
+export function clipLength(c: ClipInfo): number {
+  return Math.max(0.05, (c.end - c.start) / c.speed);
+}
+
+/** Момент у джерелі для моменту frameT (секунди від початку кадру). Поза межами: повтор або останній кадр. */
+export function clipSourceTime(c: ClipInfo, frameT: number): number {
+  const L = Math.max(0.001, c.end - c.start);
+  const run = Math.max(0, frameT) * c.speed;
+  const within = c.loop ? run % L : Math.min(run, L - 0.001);
+  return c.start + within;
+}
+
+/** Тривалість кадру: власна, інакше довжина кліпу, інакше за замовчуванням. */
+export function frameDuration(project: Project, frame: Frame): number {
+  const clip = frame.layers[0]?.clip;
+  return frame.duration ?? (clip ? clipLength(clip) : project.defaults.frameDuration);
+}
+
 export function resolveFrame(project: Project, frame: Frame): ResolvedFrame {
   const d = project.defaults;
   return {
     frame,
-    duration: frame.duration ?? d.frameDuration,
+    duration: frameDuration(project, frame),
     motion: { ...d.motion, ...frame.motion },
     transitionOut: { ...d.transitionOut, ...frame.transitionOut },
   };

@@ -4,7 +4,7 @@ import * as A from '../state/projectActions';
 import { MOTION_PROFILES } from '../model/profiles';
 import { MotionControls, TransitionControls } from './AnimationControls';
 import { FitControls } from './FitControls';
-import { NumberField, Row, Section, SelectRow, SliderRow } from './ui';
+import { NumberField, Row, Section, SelectRow, Seg, SliderRow } from './ui';
 
 interface Props {
   project: Project;
@@ -37,8 +37,15 @@ export function AnimatePanel({ project, selection, scope, duration, onChange }: 
       <Section id="anim" title={editFrame && selection.length > 1 ? `Animation · ${selection.length} selected` : editFrame ? "Animation · selected" : "Default animation"}>
         {editFrame ? (
           <>
-            <SliderRow label="Frame duration, s" value={rf.duration} min={0.1} max={10} step={0.1} decimals={1}
+            <SliderRow label="Frame duration, s" value={rf.duration} min={0.1} max={Math.max(10, rf.duration)} step={0.1} decimals={1}
               onChange={(v) => each((pr, id) => A.setFrameDuration(pr, id, v))} />
+            {frame.layers[0]?.clip && (
+              <>
+                <Seg label="Duration changes the clip by" value={project.defaults.clipFit ?? 'speed'} onChange={(v) => onChange((pr) => A.setClipFit(pr, v))}
+                  options={[{ id: 'speed', label: 'Speed', title: 'The whole clip fits the new duration: speed changes' }, { id: 'trim', label: 'Trim', title: 'The clip is cut at the new duration (or repeats if longer)' }]} />
+                <p className="hint">Speed: the whole clip fits the new duration. Trim: the clip is cut, or repeats if the frame is longer.</p>
+              </>
+            )}
             {frame.duration !== undefined && (
               <button className="link" onClick={() => each((pr, id) => A.setFrameDuration(pr, id, undefined))}>Reset duration</button>
             )}

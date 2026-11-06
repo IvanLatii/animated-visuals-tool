@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import type { Project, Rect } from '../model/types';
+import { onClipFrame } from '../media/clipAsset';
 import { renderScene, type Assets } from '../render/renderScene';
 import { ImageEditor } from './ImageEditor';
 
@@ -54,9 +55,11 @@ export function Preview({ project, assets, t, editSlot, onSlot, selection, keep,
   const zMin = Math.min(1, MIN_SCALE / fit), zMax = Math.max(1, MAX_SCALE / fit);
 
   const imageEditing = !playing && !editSlot && selection.length > 0;
+  const [frameTick, setFrameTick] = useState(0);
+  useEffect(() => onClipFrame(() => setFrameTick((n) => n + 1)), []); // новий кадр відео/GIF → перемалювати
   useEffect(() => {
     if (canvasRef.current) renderScene(project, t, canvasRef.current, assets);
-  }, [project, assets, t]);
+  }, [project, assets, t, frameTick]);
 
   useEffect(() => {
     const el = stageRef.current;

@@ -1,5 +1,5 @@
 import type { Project } from '../model/types';
-import { projectDuration, renderScene, type Assets } from '../render/renderScene';
+import { prepareClips, projectDuration, renderScene, type Assets } from '../render/renderScene';
 
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2); // H.264 і GIF-кодувальник люблять парні розміри
 
@@ -32,6 +32,7 @@ export async function renderFrames(
   const out: ImageData[] = [];
   for (let k = 0; k < indices.length; k++) {
     throwIfAborted(signal);
+    await prepareClips(project, indices[k] / fps, assets);
     renderScene(project, indices[k] / fps, canvas, assets);
     out.push(ctx.getImageData(0, 0, size.w, size.h));
     onProgress?.((k + 1) / indices.length);

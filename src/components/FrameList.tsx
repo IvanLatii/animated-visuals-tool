@@ -34,9 +34,9 @@ export function FrameList({ project, selection, onSelect, onSelectAll, onRemove,
           </button>
           <button onClick={() => addRef.current?.click()}>+ Add</button>
         </div>
-        <input ref={addRef} type="file" accept="image/*" multiple hidden
+        <input ref={addRef} type="file" accept="image/*,video/*" multiple hidden
           onChange={(e) => { if (e.target.files) onPickFiles(e.target.files); e.target.value = ''; }} />
-        <input ref={replaceRef} type="file" accept="image/*" hidden
+        <input ref={replaceRef} type="file" accept="image/*,video/*" hidden
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file && replaceId.current) onReplace(replaceId.current, file);
@@ -67,7 +67,7 @@ export function FrameList({ project, selection, onSelect, onSelectAll, onRemove,
                 }}
                 onDragEnd={() => { setDragFrom(null); setDragOver(null); }}>
                 <span className="num">{i + 1}</span>
-                <span className="thumb"><img src={frame.layers[0].src} alt="" draggable={false} /></span>
+                <span className="thumb"><img src={frame.layers[0].clip?.poster ?? frame.layers[0].src} alt="" draggable={false} /></span>
                 <span className="meta">
                   <b className="fname" title={frame.name}>{frame.name || `Image ${i + 1}`}</b>
                   <span className="dur">{rf.duration.toFixed(1)} s</span>

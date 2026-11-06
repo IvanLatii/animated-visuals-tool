@@ -1,6 +1,7 @@
 import { loadImage } from '../assets';
+import { isClip, restoreClip, type ClipAsset } from '../media/clipAsset';
 import { baseBox } from './layerGeometry';
-import { resolveFrame, type ResolvedFrame } from '../model/defaults';
+import { clipSourceTime, resolveFrame, type ResolvedFrame } from '../model/defaults';
 import type { Layer, Project } from '../model/types';
 import { applyEasing } from './easing';
 import { renderAscii, resolveAscii } from './ascii';
@@ -8,17 +9,41 @@ import { motions } from './effects';
 import { transitions, type Size } from './transitions';
 
 /** Завантажені зображення за src. Малювання не чекає на мережу, тож усе вантажимо наперед. */
-export type Assets = Map<string, CanvasImageSource & { width: number; height: number }>;
+export type Asset = (CanvasImageSource & { width: number; height: number }) | ClipAsset;
+export type Assets = Map<string, Asset>;
 
 export async function loadAssets(project: Project): Promise<Assets> {
   const assets: Assets = new Map();
-  const srcs = new Set(project.frames.flatMap((f) => f.layers.map((l) => l.src)));
+  const layers = project.frames.flatMap((f) => f.layers);
+  const srcs = new Set(layers.map((l) => l.src));
   if (project.stage.background) srcs.add(project.stage.background);
   if (project.stage.overlay) srcs.add(project.stage.overlay);
+  const clipKinds = new Map(layers.filter((l) => l.clip).map((l) => [l.src, l.clip!.kind] as const));
   await Promise.all([...srcs].map(async (src) => {
-    assets.set(src, await loadImage(src));
+    const kind = clipKinds.get(src);
+    assets.set(src, kind ? await restoreClip(src, kind) : await loadImage(src));
   }));
   return assets;
+}
+
+/** Кадри з відео/GIF для кожного шару в момент t (секунди сцени): [актив, момент у джерелі]. */
+function clipsAt(project: Project, t: number, assets: Assets): [ClipAsset, number][] {
+  const out: [ClipAsset, number][] = [];
+  const { items, total } = buildTimeline(project);
+  const time = Math.min(Math.max(t, 0), total);
+  for (const it of items) {
+    if (time < it.start - it.transIn || time > it.end) continue;
+    for (const l of it.rf.frame.layers) {
+      const a = l.clip ? assets.get(l.src) : undefined;
+      if (l.clip && isClip(a)) out.push([a, clipSourceTime(l.clip, time - it.start)]);
+    }
+  }
+  return out;
+}
+
+/** Експорт: дочекатися декодування всіх відео-кадрів, потрібних у момент t, перед синхронним renderScene. */
+export async function prepareClips(project: Project, t: number, assets: Assets): Promise<void> {
+  await Promise.all(clipsAt(project, t, assets).map(([a, st]) => a.ensure(st)));
 }
 
 interface Timeline { items: { rf: ResolvedFrame; start: number; end: number; transIn: number }[]; total: number }
@@ -45,13 +70,14 @@ export function projectDuration(project: Project): number {
   return buildTimeline(project).total;
 }
 
-function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fill', assets: Assets, size: Size) {
-  const img = assets.get(layer.src);
-  if (!img) return;
+function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fill', assets: Assets, size: Size, frameT: number) {
+  const asset = assets.get(layer.src);
+  if (!asset) return;
+  const source: CanvasImageSource = isClip(asset) ? asset.peek(layer.clip ? clipSourceTime(layer.clip, frameT) : 0) : asset;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high'; // без цього повільний зум дрібно «мерехтить»
   const { w: W, h: H } = size;
-  const b = baseBox(layer, fit, img, W, H);
+  const b = baseBox(layer, fit, asset, W, H);
   ctx.save();
   // Власне перетворення навколо центру шару; обрізання по прямокутнику шару рухається разом із зображенням.
   ctx.translate(b.cx + (layer.dx ?? 0) * W, b.cy + (layer.dy ?? 0) * H);
@@ -59,26 +85,26 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fi
   ctx.scale(layer.scaleX ?? 1, layer.scaleY ?? 1);
   ctx.translate(-b.cx, -b.cy);
   ctx.beginPath(); ctx.rect(b.rx, b.ry, b.rw, b.rh); ctx.clip();
-  ctx.drawImage(img, b.rx + (b.rw - b.w) / 2, b.ry + (b.rh - b.h) / 2, b.w, b.h);
+  ctx.drawImage(source, b.rx + (b.rw - b.w) / 2, b.ry + (b.rh - b.h) / 2, b.w, b.h);
   ctx.restore();
 }
 
 const scratch = { src: null as HTMLCanvasElement | null, out: null as HTMLCanvasElement | null };
 
 /** Кадр з увімкненим ASCII: малюємо звичайно в тимчасове полотно, потім замінюємо символами. ctx лишається з поточним станом (перехід міг його змінити). */
-function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size, noMotion = false) {
+function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size, frameT: number, noMotion = false) {
   const ascii = rf.frame.ascii?.enabled ? resolveAscii(rf.frame.ascii) : null;
-  if (!ascii) return drawFrameImage(ctx, rf, fitDefault, progress, assets, size, noMotion);
+  if (!ascii) return drawFrameImage(ctx, rf, fitDefault, progress, assets, size, frameT, noMotion);
   const w = Math.max(1, Math.round(size.w)), h = Math.max(1, Math.round(size.h));
   const src = (scratch.src ??= document.createElement('canvas'));
   const out = (scratch.out ??= document.createElement('canvas'));
   src.width = w; src.height = h; out.width = w; out.height = h; // зміна розміру ще й очищає
-  drawFrameImage(src.getContext('2d')!, rf, fitDefault, progress, assets, size, noMotion);
+  drawFrameImage(src.getContext('2d')!, rf, fitDefault, progress, assets, size, frameT, noMotion);
   renderAscii(src, out, ascii);
   ctx.drawImage(out, 0, 0, size.w, size.h);
 }
 
-function drawFrameImage(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size, noMotion = false) {
+function drawFrameImage(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size, frameT: number, noMotion = false) {
   const { w: W, h: H } = size;
   const tr = noMotion ? { scale: 1, dx: 0, dy: 0, rotate: 0 } : motions[rf.motion.type](rf.motion, progress, { w: W, h: H });
   ctx.save();
@@ -88,7 +114,7 @@ function drawFrameImage(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDef
   ctx.translate(-W / 2, -H / 2);
   if (tr.blur) ctx.filter = `blur(${(tr.blur * W).toFixed(2)}px)`;
   if (tr.alpha !== undefined && tr.alpha < 1) ctx.globalAlpha *= Math.max(0, tr.alpha);
-  for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets, size);
+  for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets, size, frameT);
   ctx.restore();
 }
 
@@ -121,11 +147,11 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
   ctx.fillRect(0, 0, W, H);
   const { stage } = project;
   const bg = stage.background ? assets.get(stage.background) : undefined;
-  if (bg) drawCover(ctx, bg, W, H);
+  if (bg && !isClip(bg)) drawCover(ctx, bg, W, H); // фон і накладка лише статичні
 
   const drawOverlay = () => {
     const ov = stage.overlay ? assets.get(stage.overlay) : undefined;
-    if (ov) drawCover(ctx, ov, W, H);
+    if (ov && !isClip(ov)) drawCover(ctx, ov, W, H);
   };
 
   const fitDefault = project.defaults.layerFit;
@@ -178,12 +204,12 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
     transitions[tr.type](
       ctx,
       applyEasing(tr.easing, p),
-      () => drawFrame(ctx, prev.rf, fitDefault, progressOf(prev), assets, size, noMotion),
-      () => drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size, noMotion),
+      () => drawFrame(ctx, prev.rf, fitDefault, progressOf(prev), assets, size, Math.max(0, time - prev.start), noMotion),
+      () => drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size, Math.max(0, time - cur.start), noMotion),
       size,
     );
   } else {
-    drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size, noMotion);
+    drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size, Math.max(0, time - cur.start), noMotion);
   }
   ctx.restore();
   drawOverlay();

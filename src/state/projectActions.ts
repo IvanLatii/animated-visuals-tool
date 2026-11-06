@@ -1,11 +1,11 @@
-import { CANVAS_PRESETS, imageLayer } from '../model/defaults';
+import { CANVAS_PRESETS, clipLength, frameDuration, imageLayer } from '../model/defaults';
 import type { MotionProfile } from '../model/profiles';
-import type { AsciiSettings, Frame, Layer, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
+import type { AsciiSettings, ClipInfo, Frame, Layer, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
 
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
 
-export function newFrame(src: string, name?: string): Frame {
-  return { id: crypto.randomUUID(), name, layers: [imageLayer(src)] };
+export function newFrame(src: string, name?: string, clip?: ClipInfo): Frame {
+  return { id: crypto.randomUUID(), name, layers: [clip ? { ...imageLayer(src), clip } : imageLayer(src)] };
 }
 
 export function addFrames(project: Project, frames: Frame[]): Project {
@@ -13,8 +13,41 @@ export function addFrames(project: Project, frames: Frame[]): Project {
 }
 
 /** Міняє картинку першого шару, усе інше в кадрі (тривалість, рух, перехід) лишається. */
-export function replaceFrameImage(project: Project, id: string, src: string, name?: string): Project {
-  return mapFrame(project, id, (f) => ({ ...f, name: name ?? f.name, layers: f.layers.map((l, i) => (i === 0 ? { ...l, src } : l)) }));
+export function replaceFrameImage(project: Project, id: string, src: string, name?: string, clip?: ClipInfo): Project {
+  return mapFrame(project, id, (f) => {
+    const hadClip = f.layers[0]?.clip !== undefined;
+    const { duration: _d, ...rest } = f; void _d;
+    return {
+      ...(clip || hadClip ? rest : f), name: name ?? f.name,
+      layers: f.layers.map((l, i) => {
+        if (i !== 0) return l;
+        const { clip: _c, ...nl } = l; void _c;
+        return clip ? { ...nl, src, clip } : { ...nl, src };
+      }),
+    };
+  });
+}
+
+/** Зміна параметрів кліпу кадру. Довжина (початок, кінець, швидкість) міняє тривалість кадру, тож власну тривалість знімаємо: кадр знову слідує за кліпом. */
+export function setClip(project: Project, ids: string[], patch: Partial<Pick<ClipInfo, 'start' | 'end' | 'speed' | 'loop'>>): Project {
+  const lengthChanges = patch.start !== undefined || patch.end !== undefined || patch.speed !== undefined;
+  return {
+    ...project,
+    frames: project.frames.map((f) => {
+      const c = f.layers[0]?.clip;
+      if (!ids.includes(f.id) || !c) return f;
+      const next = { ...c, ...patch };
+      next.start = Math.min(Math.max(0, next.start), Math.max(0, c.duration - 0.05));
+      next.end = Math.min(c.duration, Math.max(next.start + 0.05, next.end));
+      next.speed = Math.min(8, Math.max(0.1, next.speed));
+      const { duration: _d, ...rest } = f; void _d;
+      return { ...(lengthChanges ? rest : f), layers: f.layers.map((l, i) => (i === 0 ? { ...l, clip: next } : l)) };
+    }),
+  };
+}
+
+export function setClipFit(project: Project, fit: 'speed' | 'trim'): Project {
+  return { ...project, defaults: { ...project.defaults, clipFit: fit } };
 }
 
 export function setProjectName(project: Project, name: string): Project {
@@ -43,6 +76,12 @@ export function setFrameDuration(project: Project, id: string, duration: number 
       if (f.id !== id) return f;
       const { duration: _old, ...rest } = f;
       void _old;
+      const clip = f.layers[0]?.clip;
+      if (clip && duration !== undefined && project.defaults.clipFit !== 'trim') {
+        // Режим Speed: кліп вміщується цілком, швидкість підлаштовується під нову тривалість
+        const speed = Math.min(8, Math.max(0.1, (clip.end - clip.start) / duration));
+        return { ...rest, layers: f.layers.map((l, i) => (i === 0 ? { ...l, clip: { ...clip, speed } } : l)) };
+      }
       return duration === undefined ? rest : { ...rest, duration };
     }),
   };
@@ -148,14 +187,22 @@ export function applyMotionProfile(project: Project, profile: MotionProfile): Pr
 
 /** Змінює загальну тривалість: усі тривалості кадрів (і значення за замовчуванням) масштабуються пропорційно. */
 export function scaleTotalDuration(project: Project, total: number): Project {
-  const current = project.frames.reduce((sum, f) => sum + (f.duration ?? project.defaults.frameDuration), 0);
+  const current = project.frames.reduce((sum, f) => sum + frameDuration(project, f), 0);
   if (current <= 0 || total <= 0) return project;
   const k = total / current;
   const scale = (v: number) => Math.min(30, Math.max(0.1, Math.round(v * k * 100) / 100));
   return {
     ...project,
     defaults: { ...project.defaults, frameDuration: scale(project.defaults.frameDuration) },
-    frames: project.frames.map((f) => (f.duration === undefined ? f : { ...f, duration: scale(f.duration) })),
+    frames: project.frames.map((f) => {
+      const clip = f.layers[0]?.clip;
+      if (clip && f.duration === undefined) { // кліп без власної тривалості: Speed міняє швидкість, Trim фіксує нову тривалість
+        if (project.defaults.clipFit === 'trim') return { ...f, duration: scale(clipLength(clip)) };
+        const speed = Math.min(8, Math.max(0.1, clip.speed / k));
+        return { ...f, layers: f.layers.map((l, i) => (i === 0 ? { ...l, clip: { ...clip, speed } } : l)) };
+      }
+      return f.duration === undefined ? f : { ...f, duration: scale(f.duration) };
+    }),
   };
 }
 

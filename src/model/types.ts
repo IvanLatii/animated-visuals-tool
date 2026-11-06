@@ -30,6 +30,22 @@ export interface Transition {
   easing: Easing;
 }
 
+/** Відео або анімований GIF у шарі. Усі часи — секунди джерела. */
+export interface ClipInfo {
+  kind: 'video' | 'gif';
+  /** Повна довжина файлу. */
+  duration: number;
+  /** Обрізання: показується відрізок [start, end] джерела. */
+  start: number;
+  end: number;
+  /** Швидкість відтворення: 2 = вдвічі швидше. */
+  speed: number;
+  /** Кадр довший за кліп: повторювати (true) чи тримати останній кадр. */
+  loop: boolean;
+  /** Мініатюра першого кадру (data URL) для списків і таймлайну. */
+  poster: string;
+}
+
 export interface ImageLayer {
   type: 'image';
   /** data URL або blob URL. У JSON-файлі проєкту — data URL. */
@@ -41,6 +57,8 @@ export interface ImageLayer {
   scaleX?: number; scaleY?: number;
   dx?: number; dy?: number;
   rotation?: number;
+  /** Є — шар відео/GIF (src тоді файл відео), нема — статична картинка. */
+  clip?: ClipInfo;
 }
 export type Layer = ImageLayer; // 'text' | '3d' — пізніше
 
@@ -82,6 +100,8 @@ export interface Defaults {
   layerFit: 'fit' | 'fill';
   motion: Motion;
   transitionOut: Transition;
+  /** Що робить зміна тривалості кадру з відео: speed — міняє швидкість (кліп вміщується цілком), trim — обрізає/повторює. */
+  clipFit?: 'speed' | 'trim';
 }
 
 /** Відступи від країв у частках полотна (0–1). Зон може бути кілька, кожну видно або приховано окремо. */

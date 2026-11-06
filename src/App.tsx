@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { fileToDataUrl, loadImage } from './assets';
+import { isMediaFile, readMedia, type ReadMedia } from './media/readMedia';
 import { ExportPanel } from './components/ExportPanel';
 import { Sidebar, type Target } from './components/Sidebar';
 import { LayersPanel } from './components/LayersPanel';
@@ -86,22 +87,22 @@ export function App() {
   }, [project, selectedId, selectOne, seek]);
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
-    const images = [...files].filter((f) => f.type.startsWith('image/'));
-    if (images.length === 0) { setError('That is not an image. Use PNG, JPG or WebP.'); return; }
+    const media = [...files].filter(isMediaFile);
+    if (media.length === 0) { setError('Unsupported file. Use PNG, JPG, WebP, GIF or a video (MP4, WebM).'); return; }
     setError(null);
-    const loaded: { frame: ReturnType<typeof newFrame>; img: HTMLImageElement }[] = [];
-    for (const file of images) {
+    const loaded: { frame: ReturnType<typeof newFrame>; read: ReadMedia }[] = [];
+    for (const file of media) {
       try {
-        const src = await fileToDataUrl(file);
-        loaded.push({ frame: newFrame(src, file.name.replace(/\.[^.]+$/, '')), img: await loadImage(src) });
-      } catch {
-        setError(`Could not open "${file.name}".`);
+        const read = await readMedia(file);
+        loaded.push({ frame: newFrame(read.src, file.name.replace(/\.[^.]+$/, ''), read.clip), read });
+      } catch (e) {
+        setError(`Could not open "${file.name}": ${e instanceof Error ? e.message : 'unknown error'}`);
       }
     }
     if (loaded.length === 0) return;
     setAssets((prev) => {
       const next = new Map(prev);
-      for (const { frame, img } of loaded) next.set(frame.layers[0].src, img);
+      for (const { frame, read } of loaded) next.set(frame.layers[0].src, read.asset);
       return next;
     });
     setProject((p) => addFrames(p, loaded.map((l) => l.frame)));
@@ -109,15 +110,14 @@ export function App() {
   }, [selectOne]);
 
   const replaceFile = useCallback(async (id: string, file: File) => {
-    if (!file.type.startsWith('image/')) { setError('That is not an image. Use PNG, JPG or WebP.'); return; }
+    if (!isMediaFile(file)) { setError('Unsupported file. Use PNG, JPG, WebP, GIF or a video (MP4, WebM).'); return; }
     try {
-      const src = await fileToDataUrl(file);
-      const img = await loadImage(src);
-      setAssets((prev) => new Map(prev).set(src, img));
-      setProject((p) => replaceFrameImage(p, id, src, file.name.replace(/\.[^.]+$/, '')));
+      const read = await readMedia(file);
+      setAssets((prev) => new Map(prev).set(read.src, read.asset));
+      setProject((p) => replaceFrameImage(p, id, read.src, file.name.replace(/\.[^.]+$/, ''), read.clip));
       setError(null);
-    } catch {
-      setError(`Could not open "${file.name}".`);
+    } catch (e) {
+      setError(`Could not open "${file.name}": ${e instanceof Error ? e.message : 'unknown error'}`);
     }
   }, []);
 

@@ -50,7 +50,7 @@ export function Timeline({ project, t, selection, onSeek, onSelect, onDuration }
           onPointerUp={() => { dragging.current = false; }}>
           {items.map((it) => (
             <div key={it.rf.frame.id} className={`seg-t ${selection.includes(it.rf.frame.id) ? 'selected' : ''}`}
-              style={{ flexGrow: it.rf.duration, backgroundImage: `url(${it.rf.frame.layers[0].src})` }}>
+              style={{ flexGrow: it.rf.duration, backgroundImage: `url(${it.rf.frame.layers[0].clip?.poster ?? it.rf.frame.layers[0].src})` }}>
               <span>{it.rf.duration.toFixed(2)} s</span>
               <div className="edge" onPointerDown={(e) => edgeDown(e, it.rf.frame.id, it.rf.duration)} onPointerMove={edgeMove} onPointerUp={() => { edge.current = null; }} onPointerCancel={() => { edge.current = null; }} />
             </div>

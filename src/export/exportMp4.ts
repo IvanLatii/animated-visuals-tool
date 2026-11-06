@@ -1,6 +1,6 @@
 import { BufferTarget, CanvasSource, Mp4OutputFormat, Output, Quality } from 'mediabunny';
 import type { ExportJob, Project } from '../model/types';
-import { renderScene, type Assets } from '../render/renderScene';
+import { prepareClips, renderScene, type Assets } from '../render/renderScene';
 import type { ExportOptions } from './exportGif';
 import { exportSize, frameCount, throwIfAborted } from './renderFrames';
 
@@ -19,6 +19,7 @@ export async function exportMp4(project: Project, job: ExportJob, assets: Assets
   try {
     for (let f = 0; f < n; f++) {
       throwIfAborted(signal);
+      await prepareClips(project, f / job.fps, assets);
       renderScene(project, f / job.fps, canvas, assets);
       await source.add(f / job.fps, 1 / job.fps);
       onStatus?.('Encoding MP4', (f + 1) / n);
