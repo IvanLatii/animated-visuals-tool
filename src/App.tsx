@@ -19,7 +19,7 @@ import type { Project } from './model/types';
 import { parseProject, projectFileName, serializeProject } from './model/projectFile';
 import { canPick, downloadText, isAbort, pickOpenHandle, pickSaveHandle, writeHandle, type FileHandle } from './projectIO';
 import { buildTimeline, loadAssets, projectDuration, type Assets } from './render/renderScene';
-import { addFrames, addLayer, applyLayerPatches, removeLayer, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
+import { addFrames, addLayer, applyLayerPatches, moveLayer, nudgeLayers, removeLayer, replaceLayer, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
 
@@ -123,6 +123,32 @@ export function App() {
       setError(`Could not open "${file.name}": ${e instanceof Error ? e.message : 'unknown error'}`);
     }
   }, []);
+
+  /** Заміна картинки/відео в одному шарі кадру: розмір, зсув і поворот шару лишаються. */
+  const replaceLayerFile = useCallback(async (id: string, index: number, file: File) => {
+    if (!isMediaFile(file)) { setError('Unsupported file. Use PNG, JPG, WebP, GIF or a video (MP4, WebM).'); return; }
+    try {
+      const read = await readMedia(file);
+      setAssets((prev) => new Map(prev).set(read.src, read.asset));
+      setProject((p) => replaceLayer(p, id, index, read.src, file.name.replace(/\.[^.]+$/, ''), read.clip));
+      setError(null);
+    } catch (e) {
+      setError(`Could not open "${file.name}": ${e instanceof Error ? e.message : 'unknown error'}`);
+    }
+  }, []);
+
+  /** Перестановка шарів: вибраний шар лишається тим самим шаром (його індекс слідує за ним). */
+  const moveLayerTo = useCallback((id: string, from: number, to: number) => {
+    setProject((p) => moveLayer(p, id, from, to));
+    setActiveLayer((cur) => {
+      const n = project.frames.find((f) => f.id === id)?.layers.length ?? 1;
+      const a = Math.min(cur, n - 1);
+      if (a === from) return to;
+      if (from < a && to >= a) return a - 1;
+      if (from > a && to <= a) return a + 1;
+      return a;
+    });
+  }, [project.frames]);
 
   const replaceFile = useCallback(async (id: string, file: File) => {
     if (!isMediaFile(file)) { setError('Unsupported file. Use PNG, JPG, WebP, GIF or a video (MP4, WebM).'); return; }
@@ -230,7 +256,7 @@ export function App() {
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { saveLayout(layout); }, [layout]);
 
-  // Гарячі клавіші. Space = play/pause (не коли друкуєш у полі), ⌘S / ⌘O — зберегти / відкрити, ← → — кадр назад / вперед, Delete — видалити кадр.
+  // Гарячі клавіші. Space = play/pause (не коли друкуєш у полі), ⌘S / ⌘O — зберегти / відкрити, стрілки — рух вибраного зображення (Shift = 10 px; без вибору ← → — кадр назад / вперед; Alt + ← → завжди кадр), Delete — видалити кадр.
   useEffect(() => {
     const goToFrame = (step: number) => {
       const { items } = buildTimeline(project);
@@ -258,8 +284,20 @@ export function App() {
         setSelection(project.frames.map((f) => f.id));
         return;
       }
+      if (e.altKey && !e.metaKey && !e.ctrlKey && !exportOpen && !isTyping(e.target, true) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault(); goToFrame(e.key === 'ArrowLeft' ? -1 : 1); // Alt + ← → — кадр назад / вперед
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey || exportOpen) return;
+      const arrow = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key);
       if (e.code === 'Space' && !e.repeat && !isTyping(e.target)) { e.preventDefault(); togglePlay(); }
+      else if (arrow && selection.length > 0 && !isTyping(e.target, true)) {
+        // Стрілки рухають вибране зображення (вибраний шар): 1 px, з Shift 10 px
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        const px = e.key === 'ArrowLeft' ? { x: -step, y: 0 } : e.key === 'ArrowRight' ? { x: step, y: 0 } : e.key === 'ArrowUp' ? { x: 0, y: -step } : { x: 0, y: step };
+        setProject((p) => nudgeLayers(p, selection, px.x, px.y, activeLayer));
+      }
       else if (e.key === 'ArrowLeft' && !isTyping(e.target, true)) { e.preventDefault(); goToFrame(-1); }
       else if (e.key === 'ArrowRight' && !isTyping(e.target, true)) { e.preventDefault(); goToFrame(1); }
       else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length > 0 && !isTyping(e.target, true)) {
@@ -272,7 +310,7 @@ export function App() {
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen, undo, redo]);
+  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen, undo, redo, activeLayer]);
 
   return (
     <div className={`app ${dropping ? 'dropping' : ''}`}
@@ -330,7 +368,7 @@ export function App() {
       <Sidebar project={project} target={target} selection={selection} assets={assets} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
         keep={keepProportions} onKeep={setKeepProportions}
-        frameLayers={{ li: activeLayer, onSelect: setActiveLayer, onAdd: (id, f) => void addLayerFile(id, f), onRemove: (id, i) => { setProject((p) => removeLayer(p, id, i)); setActiveLayer(0); } }}
+        frameLayers={{ li: activeLayer, onSelect: setActiveLayer, onAdd: (id, f) => void addLayerFile(id, f), onRemove: (id, i) => { setProject((p) => removeLayer(p, id, i)); setActiveLayer(0); }, onReplace: (id, i, f) => void replaceLayerFile(id, i, f), onMove: moveLayerTo }}
         slot={{ selectedImage, editSlot, onEditSlot: setEditSlot }}
         layer={{ onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => { setProject((p) => setStageImage(p, k, undefined)); setLayerSel(null); } }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />

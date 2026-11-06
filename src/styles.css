@@ -1,20 +1,21 @@
 /* Система: одна висота контролів (24), одна висота смуг (32), два розміри тексту (11 і 10 капсом),
    відступи 4 / 8 / 12 / 16, дві лінії (тонка й для контролів), кути квадратні, один акцент. */
 :root {
-  --bg: #f4f4f3; --panel: #ffffff; --ink: #0d0d0f; --on-ink: #ffffff; --text: #1a1a1c; --muted: #8e8e94;
-  --line: #efeff1; --line-strong: #cdcdd2; --accent: #2f3cff; --danger: #d9342b; --dot: rgb(0 0 0 / .1); --ease-pill: cubic-bezier(.34, 1.5, .64, 1); --ease-out: cubic-bezier(.3, .7, .2, 1);
+  /* Основні кольори взято з фавіконів: чорний #17171A і синій #3643FF. Решта: їхні похідні. */
+  --bg: #f3f3f5; --panel: #ffffff; --ink: #17171a; --on-ink: #ffffff; --text: #17171a; --muted: #8b8b94;
+  --line: #ececf0; --line-strong: #cfcfd6; --accent: #3643ff; --accent-text: #3643ff; --danger: #d9342b; --dot: rgb(23 23 26 / .1); --ease-pill: cubic-bezier(.34, 1.5, .64, 1); --ease-out: cubic-bezier(.3, .7, .2, 1);
   --h: 28px; --bar: 36px;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #0e0e10; --panel: #151517; --ink: #f2f2f3; --on-ink: #0d0d0f; --text: #e8e8ea; --muted: #7d7d85;
-  --line: #202024; --line-strong: #3a3a40; --accent: #5b73ff; --danger: #ff6b61; --dot: rgb(255 255 255 / .08);
+  --bg: #0e0e11; --panel: #17171a; --ink: #f2f2f5; --on-ink: #17171a; --text: #e8e8ec; --muted: #80808a;
+  --line: #242429; --line-strong: #3b3b43; --accent: #3643ff; --accent-text: #8f98ff; --danger: #ff6b61; --dot: rgb(255 255 255 / .08);
   color-scheme: dark;
 }
 :root[data-theme="dim"] {
-  --bg: #292a31; --panel: #33343c; --ink: #f4f4f6; --on-ink: #1c1d22; --text: #e9e9ee; --muted: #9b9ca8;
-  --line: #41424c; --line-strong: #565764; --accent: #6b80ff; --danger: #ff7a70; --dot: rgb(255 255 255 / .09);
+  --bg: #26262b; --panel: #2f2f35; --ink: #f4f4f7; --on-ink: #17171a; --text: #e9e9ee; --muted: #9a9aa6;
+  --line: #3d3d45; --line-strong: #54545e; --accent: #3643ff; --accent-text: #8f98ff; --danger: #ff7a70; --dot: rgb(255 255 255 / .09);
   color-scheme: dark;
 }
 
@@ -32,7 +33,7 @@ button:disabled { opacity: .4; cursor: default; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button.primary:hover:not(:disabled) { filter: brightness(1.1); }
 button.icon { width: var(--h); padding: 0; font-size: 12px; letter-spacing: 0; }
-button.link { height: auto; padding: 0; border: none; background: none; color: var(--accent); text-transform: none; letter-spacing: 0; font-size: 11px; justify-content: flex-start; }
+button.link { height: auto; padding: 0; border: none; background: none; color: var(--accent-text); text-transform: none; letter-spacing: 0; font-size: 11px; justify-content: flex-start; }
 input, select { font: 11px var(--mono); color: var(--text); }
 input.num, input.hex { height: var(--h); background: transparent; border: none; padding: 0 6px; min-width: 0; }
 input.num:hover, input.hex:hover, input.num:focus, input.hex:focus { background: var(--bg); }
@@ -101,7 +102,7 @@ progress::-webkit-progress-value { background: var(--accent); }
 .frame img { width: 44px; height: 44px; object-fit: cover; display: block; background: var(--bg); }
 .frame .num, .frame .dur { color: var(--muted); font-size: 10px; }
 .frame .icon { border: none; background: none; }
-.frame .icon:hover:not(:disabled) { color: var(--accent); }
+.frame .icon:hover:not(:disabled) { color: var(--accent-text); }
 .thumb { position: relative; display: block; }
 .thumb .rep { position: absolute; inset: 0; width: 100%; height: 100%; border: none; background: rgb(0 0 0 / .55); color: #fff; opacity: 0; transition: opacity .15s; }
 .frame:hover .thumb .rep, .thumb .rep:focus-visible { opacity: 1; }
@@ -135,14 +136,15 @@ progress::-webkit-progress-value { background: var(--accent); }
 .chk { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; }
 
 /* --- Таймлайн --- */
-.timeline { height: var(--th); flex: none; padding: 12px 16px; display: flex; align-items: center; }
+.timeline { height: var(--th); flex: none; padding: 18px 16px 12px; display: flex; align-items: center; }
 .timeline .hint { margin: auto; }
 .bar { position: relative; display: flex; gap: 1px; width: 100%; height: 100%; max-height: 120px; touch-action: none; cursor: pointer; user-select: none; }
 .seg-t { flex-basis: 0; min-width: 0; background-size: cover; background-position: center; border: 1px solid var(--line-strong); position: relative; overflow: hidden; }
 .seg-t.selected { border-color: var(--ink); outline: 1px solid var(--ink); outline-offset: -2px; }
 .seg-t span { position: absolute; left: 0; bottom: 0; font-size: 10px; background: var(--ink); color: var(--on-ink); padding: 0 4px; }
 .playhead { position: absolute; top: -4px; bottom: -4px; width: 1px; background: var(--accent); pointer-events: none; }
-.playhead::before { content: ""; position: absolute; top: 0; left: -3px; width: 7px; height: 5px; background: var(--accent); }
+/* Великий квадрат-маркер зверху: за нього зручно тягнути (події йдуть на смугу) */
+.playhead::before { content: ""; position: absolute; top: -10px; left: -7px; width: 15px; height: 15px; background: var(--accent); pointer-events: auto; cursor: ew-resize; box-shadow: 0 0 0 1px var(--panel); }
 
 /* --- Права панель --- */
 .side { display: flex; flex-direction: column; overflow: hidden; }
@@ -170,14 +172,14 @@ progress::-webkit-progress-value { background: var(--accent); }
 .r.slider .lab { max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .group { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .grp { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
-.grp em { font-style: normal; color: var(--accent); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.grp em { font-style: normal; color: var(--accent-text); font-weight: 400; letter-spacing: 0; text-transform: none; }
 .curve { width: 100%; height: 64px; display: block; }
 .pad { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
 .pad > button { width: 100%; }
 .sec-body > button:not(.link) { width: 100%; }
 .busy span { color: var(--muted); }
 .result video, .result img { width: 100%; display: block; background: #000; }
-.download { color: var(--accent); }
+.download { color: var(--accent-text); }
 .toast { position: fixed; bottom: calc(var(--th) + 16px); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--on-ink); padding: 8px 12px; z-index: 60; }
 .toast.error { background: var(--danger); color: #fff; cursor: pointer; }
 

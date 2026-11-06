@@ -5,7 +5,8 @@ import type { AsciiSettings, ClipInfo, Frame, Layer, Motion, Project, Rect, Safe
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
 
 export function newFrame(src: string, name?: string, clip?: ClipInfo): Frame {
-  return { id: crypto.randomUUID(), name, layers: [clip ? { ...imageLayer(src), clip } : imageLayer(src)] };
+  const layer = clip ? { ...imageLayer(src), name, clip } : { ...imageLayer(src), name };
+  return { id: crypto.randomUUID(), name, layers: [layer] };
 }
 
 export function addFrames(project: Project, frames: Frame[]): Project {
@@ -22,7 +23,7 @@ export function replaceFrameImage(project: Project, id: string, src: string, nam
       layers: f.layers.map((l, i) => {
         if (i !== 0) return l;
         const { clip: _c, ...nl } = l; void _c;
-        return clip ? { ...nl, src, clip } : { ...nl, src };
+        return clip ? { ...nl, src, name: name ?? l.name, clip } : { ...nl, src, name: name ?? l.name };
       }),
     };
   });
@@ -260,8 +261,42 @@ export function addLayer(project: Project, id: string, src: string, name?: strin
   });
 }
 
+/** Міняє картинку/кліп шару index, зберігаючи його розмір, зсув і поворот. Шар 0 — як заміна зображення кадру. */
+export function replaceLayer(project: Project, id: string, index: number, src: string, name?: string, clip?: ClipInfo): Project {
+  if (index === 0) return replaceFrameImage(project, id, src, name, clip);
+  return mapFrame(project, id, (f) => {
+    const hadClip = f.layers[index]?.clip !== undefined;
+    const { duration: _d, ...rest } = f; void _d;
+    return {
+      ...(clip || hadClip ? rest : f),
+      layers: f.layers.map((l, i) => {
+        if (i !== index) return l;
+        const { clip: _c, ...nl } = l; void _c;
+        return clip ? { ...nl, src, name, clip } : { ...nl, src, name };
+      }),
+    };
+  });
+}
+
+/** Переставляє шар з позиції from на to (індекси масиву шарів). */
+export function moveLayer(project: Project, id: string, from: number, to: number): Project {
+  return mapFrame(project, id, (f) => {
+    if (from === to || from < 0 || to < 0 || from >= f.layers.length || to >= f.layers.length) return f;
+    const layers = [...f.layers];
+    const [moved] = layers.splice(from, 1);
+    layers.splice(to, 0, moved);
+    return { ...f, layers };
+  });
+}
+
 export function removeLayer(project: Project, id: string, index: number): Project {
   return mapFrame(project, id, (f) => (f.layers.length <= 1 ? f : { ...f, layers: f.layers.filter((_, i) => i !== index) }));
+}
+
+/** Зсув шару на px пікселів полотна (від поточного положення). */
+export function nudgeLayers(project: Project, ids: string[], dxPx: number, dyPx: number, li = 0): Project {
+  const slotW = project.stage.slot.w * project.canvas.w, slotH = project.stage.slot.h * project.canvas.h;
+  return mapLayersOf(project, ids, (l) => ({ ...l, dx: (l.dx ?? 0) + dxPx / slotW, dy: (l.dy ?? 0) + dyPx / slotH }), li);
 }
 
 export function patchLayers(project: Project, ids: string[], patch: LayerPatch, li = 0): Project {

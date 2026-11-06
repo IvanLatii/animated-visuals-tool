@@ -129,7 +129,8 @@ export function ImageEditor({ project, assets, selection, t, li, keep, toCanvas,
       // Зсув у локальних осях рамки (з урахуванням її повного повороту)
       const cos = Math.cos(s.theta), sin = Math.sin(s.theta);
       const ldx = ddx * cos + ddy * sin, ldy = -ddx * sin + ddy * cos;
-      const k2 = s.multi ? 2 : 1; // кілька виділених масштабуються навколо власних центрів, один — від протилежного краю
+      const fromCenter = s.multi || e.altKey; // як у Figma: Alt — в обидва боки симетрично від центру; кілька виділених теж навколо власних центрів
+      const k2 = fromCenter ? 2 : 1; // один без Alt — від протилежного краю
       let fx = s.hx !== 0 ? Math.max(0.05, (s.w0 + s.hx * ldx * k2) / s.w0) : 1;
       let fy = s.hy !== 0 ? Math.max(0.05, (s.h0 + s.hy * ldy * k2) / s.h0) : 1;
       const gx: number[] = [], gy: number[] = [];
@@ -164,14 +165,14 @@ export function ImageEditor({ project, assets, selection, t, li, keep, toCanvas,
       }
       setGuides({ x: gx, y: gy });
       let shiftX = 0, shiftY = 0;
-      if (!s.multi) {
+      if (!fromCenter) {
         const lx = s.hx !== 0 ? (s.hx * (s.w0 * fx - s.w0)) / 2 : 0;
         const ly = s.hy !== 0 ? (s.hy * (s.h0 * fy - s.h0)) / 2 : 0;
         const v = toLayer(s, lx * cos - ly * sin, lx * sin + ly * cos);
         shiftX = v.x; shiftY = v.y;
       }
       for (const [id, k] of Object.entries(s.snap)) {
-        patches[id] = { scaleX: clampScale(k.sx * fx), scaleY: clampScale(k.sy * fy), ...(s.multi ? {} : { dx: k.dx + shiftX / s.sw, dy: k.dy + shiftY / s.sh }) };
+        patches[id] = { scaleX: clampScale(k.sx * fx), scaleY: clampScale(k.sy * fy), ...(fromCenter ? {} : { dx: k.dx + shiftX / s.sw, dy: k.dy + shiftY / s.sh }) };
       }
     }
     onPatches(patches);

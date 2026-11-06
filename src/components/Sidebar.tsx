@@ -31,7 +31,7 @@ interface Props {
   slot: Omit<React.ComponentProps<typeof StagePanel>, 'project' | 'onChange'>;
   keep: boolean;
   onKeep: (v: boolean) => void;
-  frameLayers: { li: number; onSelect: (i: number) => void; onAdd: (id: string, f: File) => void; onRemove: (id: string, i: number) => void };
+  frameLayers: { li: number; onSelect: (i: number) => void; onAdd: (id: string, f: File) => void; onRemove: (id: string, i: number) => void; onReplace: (id: string, i: number, f: File) => void; onMove: (id: string, from: number, to: number) => void };
   layer: Pick<React.ComponentProps<typeof LayerDesign>, 'onPickImage' | 'onClearImage'>;
 }
 
@@ -54,7 +54,7 @@ export function Sidebar({ project, target, selection, assets, duration, exportSe
     <aside className="side">
       <Tabs label="Inspector" value={active} onChange={setTab} options={tabs} />
       <div className="side-scroll">
-        {active === 'design' && target === 'frames' && <FrameLayers project={project} selection={selection} li={frameLayers.li} onSelect={frameLayers.onSelect} onAdd={frameLayers.onAdd} onRemove={frameLayers.onRemove} />}
+        {active === 'design' && target === 'frames' && <FrameLayers project={project} selection={selection} li={frameLayers.li} onSelect={frameLayers.onSelect} onAdd={frameLayers.onAdd} onRemove={frameLayers.onRemove} onReplace={frameLayers.onReplace} onMove={frameLayers.onMove} />}
         {active === 'design' && target === 'frames' && <SelectionPanel project={project} selection={selection} assets={assets} onChange={onChange} keep={keep} onKeep={onKeep} li={frameLayers.li} />}
         {active === 'design' && target === 'frames' && <ClipPanel project={project} selection={selection} onChange={onChange} li={frameLayers.li} />}
         {active === 'design' && target === 'frames' && <AsciiPanel project={project} selection={selection} onChange={onChange} />}

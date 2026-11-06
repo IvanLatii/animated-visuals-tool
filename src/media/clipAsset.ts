@@ -26,75 +26,129 @@ export function onClipFrame(cb: () => void): () => void {
 }
 const notify = () => listeners.forEach((cb) => cb());
 
-const GRID = 60; // кадри кешуємо на сітці 60 за секунду: вистачає для експорту до 60 FPS
-const CACHE_FRAMES = 60;
-const MAX_QUEUE = 8;
+const MAX_FRAMES = 40; // скільки декодованих кадрів тримаємо (на 1600 px це ~230 МБ)
+const AHEAD = 0.4; // скільки секунд наперед декодуємо під час програвання
+const GAP = 1.0; // далі за стільки секунд від поточного місця декодер перескакує (seek), а не доганяє
 const GIF_MEMORY_BUDGET = 500e6; // байт на всі кадри одного GIF
 const DECODE_LONG_SIDE = 1600; // більше за це декодувати немає сенсу: полотно зазвичай ≤ 1920
 
+interface Decoded { ts: number; end: number; canvas: CanvasImageSource }
+
+/**
+ * Відео: кадри декодуються ПОСЛІДОВНО з випередженням (як у плеєрах), а не окремим запитом на кожен кадр.
+ * Єдиний цикл (pump) володіє декодером: тримає попереду цілі ~AHEAD секунд кадрів, а при стрибку (перемотування) починає з нового місця.
+ */
 class VideoClip implements ClipAsset {
   readonly isClip = true as const;
-  private cache = new Map<number, CanvasImageSource>();
-  private queue: number[] = [];
-  private waiters = new Map<number, { promise: Promise<void>; resolve: () => void }>();
+  private frames: Decoded[] = []; // за зростанням ts
+  private want = 0; // момент (у часі файлу), який зараз потрібен
+  private missing = false; // peek не знайшов кадр і показав запасний
+  private iter: AsyncGenerator<{ canvas: CanvasImageSource; timestamp: number; duration: number }, void, unknown> | null = null;
+  private iterEnd = -1; // де закінчився останній кадр, виданий ітератором
+  private eof = false;
   private running = false;
+  private waiters: { tt: number; resolve: () => void }[] = [];
   private last: CanvasImageSource;
 
   constructor(private sink: CanvasSink, private first: number, readonly width: number, readonly height: number, readonly duration: number, poster: CanvasImageSource) {
     this.last = poster;
   }
 
-  private key = (t: number) => Math.max(0, Math.round(t * GRID));
+  /** Індекс кадру, що показується в момент tt (останній, що почався), або -1. */
+  private find(tt: number): number {
+    let lo = 0, hi = this.frames.length - 1, at = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.frames[mid].ts <= tt + 1e-6) { at = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    return at;
+  }
+
+  private covered(tt: number): boolean {
+    if (this.eof && tt >= this.first + this.duration - 1e-3) return true; // кінець файлу: тримаємо останній кадр
+    const i = this.find(tt);
+    return i >= 0 && tt < this.frames[i].end - 1e-6;
+  }
+
+  private needsWork(): boolean {
+    if (!this.covered(this.want)) return true;
+    if (this.eof) return false;
+    const i = this.find(this.want + AHEAD);
+    return !(i >= 0 && this.want + AHEAD < this.frames[i].end - 1e-6);
+  }
 
   peek(t: number): CanvasImageSource {
-    const k = this.key(t);
-    const hit = this.cache.get(k);
-    if (hit) {
-      this.cache.delete(k); this.cache.set(k, hit); // свіжий у кеші
-      this.last = hit;
-      return hit;
-    }
-    void this.request(k);
-    for (let i = 1; i <= 4; i++) { const near = this.cache.get(k - i); if (near) return near; }
-    return this.last;
+    const tt = this.first + t;
+    this.want = tt;
+    const i = this.find(tt);
+    const hit = i >= 0 && (tt < this.frames[i].end - 1e-6 || this.eof);
+    if (this.needsWork()) void this.pump();
+    if (hit) { this.last = this.frames[i].canvas; this.missing = false; return this.last; }
+    this.missing = true;
+    return i >= 0 ? this.frames[i].canvas : this.last; // найближчий попередній кадр, поки новий декодується
   }
 
   ensure(t: number): Promise<void> {
-    return this.request(this.key(t));
+    const tt = this.first + t;
+    this.want = tt;
+    if (this.covered(tt)) { if (this.needsWork()) void this.pump(); return Promise.resolve(); }
+    return new Promise<void>((resolve) => { this.waiters.push({ tt, resolve }); void this.pump(); });
   }
 
-  private request(k: number): Promise<void> {
-    if (this.cache.has(k)) return Promise.resolve();
-    const w = this.waiters.get(k);
-    if (w) return w.promise;
-    let resolve!: () => void;
-    const promise = new Promise<void>((r) => { resolve = r; });
-    this.waiters.set(k, { promise, resolve });
-    this.queue.push(k);
-    while (this.queue.length > MAX_QUEUE) { // під час гортання старі запити вже не потрібні
-      const old = this.queue.shift()!;
-      this.waiters.get(old)?.resolve();
-      this.waiters.delete(old);
+  private flushWaiters() {
+    this.waiters = this.waiters.filter((w) => { if (this.covered(w.tt)) { w.resolve(); return false; } return true; });
+  }
+
+  private insert(d: Decoded) {
+    const i = this.find(d.ts);
+    if (i >= 0 && Math.abs(this.frames[i].ts - d.ts) < 1e-6) return; // вже є
+    this.frames.splice(i + 1, 0, d);
+    while (this.frames.length > MAX_FRAMES) { // прибираємо найдальші від потрібного моменту
+      let far = 0, farD = -1;
+      for (let k = 0; k < this.frames.length; k++) { const dist = Math.abs(this.frames[k].ts - this.want); if (dist > farD) { farD = dist; far = k; } }
+      this.frames.splice(far, 1);
     }
-    void this.run();
-    return promise;
   }
 
-  private async run() {
+  /** Перескок: беремо точний кадр на момент from, далі ітератор іде послідовно від наступного. */
+  private async restart(from: number) {
+    const old = this.iter;
+    this.iter = null; this.eof = false; this.iterEnd = -1;
+    if (old) await old.return(undefined).catch(() => undefined);
+    const w0 = await this.sink.getCanvas(Math.max(this.first, from)).catch(() => null);
+    let next = Math.max(this.first, from);
+    if (w0) {
+      this.insert({ ts: w0.timestamp, end: w0.timestamp + Math.max(w0.duration, 1e-3), canvas: w0.canvas });
+      this.iterEnd = w0.timestamp + w0.duration;
+      next = this.iterEnd - 1e-4; // трохи раніше початку наступного кадру; повтор поточного відсіє insert
+      this.flushWaiters();
+    }
+    this.iter = this.sink.canvases(next);
+  }
+
+  private async pump() {
     if (this.running) return;
     this.running = true;
-    while (this.queue.length) {
-      const k = this.queue.pop()!; // найновіший запит першим: саме його зараз видно
-      try {
-        const w = await this.sink.getCanvas(this.first + k / GRID);
-        if (w) this.cache.set(k, w.canvas);
-      } catch { /* кадр не декодувався: лишається попередній */ }
-      while (this.cache.size > CACHE_FRAMES) this.cache.delete(this.cache.keys().next().value!);
-      this.waiters.get(k)?.resolve();
-      this.waiters.delete(k);
-      notify();
+    try {
+      while (this.needsWork()) {
+        const want = this.want;
+        const lost = !this.iter || want < (this.frames[0]?.ts ?? Infinity) && !this.covered(want) || (this.iterEnd >= 0 && want > this.iterEnd + GAP);
+        if (lost) await this.restart(want);
+        let item: IteratorResult<{ canvas: CanvasImageSource; timestamp: number; duration: number }, void>;
+        try { item = await this.iter!.next(); } catch { this.iter = null; this.eof = true; break; }
+        if (item.done) { this.iter = null; this.eof = true; break; }
+        const w = item.value;
+        this.insert({ ts: w.timestamp, end: w.timestamp + Math.max(w.duration, 1e-3), canvas: w.canvas });
+        this.iterEnd = w.timestamp + w.duration;
+        this.flushWaiters();
+        if (this.missing && this.covered(this.want)) { this.missing = false; notify(); } // кадр, якого бракувало, з'явився: перемалювати
+      }
+    } finally {
+      this.running = false;
+      this.flushWaiters();
+      if (this.waiters.length > 0 || this.needsWork()) { if (!this.eof) void this.pump(); else this.flushWaiters(); }
+      if (this.eof) { this.waiters.forEach((w) => w.resolve()); this.waiters = []; }
     }
-    this.running = false;
   }
 }
 
