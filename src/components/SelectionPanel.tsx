@@ -1,6 +1,7 @@
 import type { Project } from '../model/types';
 import { alignedOffset, type AlignHow } from '../render/layerGeometry';
-import type { Assets } from '../render/renderScene';
+import { layerAsset, type Assets } from '../render/renderScene';
+import { ColorField } from './ColorField';
 import * as A from '../state/projectActions';
 import { Row, Section, NumberField, Seg } from './ui';
 
@@ -41,20 +42,25 @@ export function SelectionPanel({ project, selection, assets, onChange, keep, onK
   const sy = common(layers.map((l) => (l.scaleY ?? 1) * 100));
   const dx = common(layers.map((l) => (l.dx ?? 0) * 100));
   const dy = common(layers.map((l) => (l.dy ?? 0) * 100));
+  const rad = common(layers.map((l) => (l.radius ?? 0) * 100));
+  const smo = common(layers.map((l) => (l.smooth ?? 0.6) * 100));
   const rot = common(layers.map((l) => l.rotation ?? 0));
 
   // Усі вирівнювання — відносно вікна вмісту (Content area): зображення міняються по черзі, тож кожне вирівнюється в тій самій рамці.
   const slotW = project.stage.slot.w * project.canvas.w, slotH = project.stage.slot.h * project.canvas.h;
   const align = (how: AlignHow) => onChange((p) => A.mapLayersOf(p, ids, (l) => {
-    const img = assets.get(l.src);
+    const img = layerAsset(l, assets, slotW, slotH);
     if (!img) return l;
     return { ...l, ...alignedOffset(l, l.fit ?? p.defaults.layerFit, img, slotW, slotH, how) };
   }, li));
 
   return (
     <Section id="selection" title={frames.length > 1 ? `Selected images (${frames.length})` : li > 0 ? 'Selected layer' : 'Selected image'}>
-      <Seg label="Fit mode" value={fitValue} onChange={(v) => onChange((p) => ids.reduce((acc, id) => A.setFrameFit(acc, id, v as 'fit' | 'fill', li), p))}
-        options={[{ id: 'fit', label: 'Fit' }, { id: 'fill', label: 'Fill' }]} />
+      {frames.length === 1 && layers[0]?.fill && (
+        <Row label="Color"><ColorField value={layers[0].fill} onChange={(c) => onChange((p) => A.setLayerFill(p, ids[0], Math.min(li, frames[0].layers.length - 1), c))} /></Row>
+      )}
+      {!layers.some((l) => l.fill) && <Seg label="Fit mode" value={fitValue} onChange={(v) => onChange((p) => ids.reduce((acc, id) => A.setFrameFit(acc, id, v as 'fit' | 'fill', li), p))}
+        options={[{ id: 'fit', label: 'Fit' }, { id: 'fill', label: 'Fill' }]} />}
       <Row label="Width, %"><NumberField value={sx.value} mixed={sx.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'x', v / 100, keep, li))} /></Row>
       <Row label="Height, %"><NumberField value={sy.value} mixed={sy.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'y', v / 100, keep, li))} /></Row>
       <Row label="Keep proportions"><input type="checkbox" checked={keep} onChange={(e) => onKeep(e.target.checked)} /></Row>
@@ -65,6 +71,8 @@ export function SelectionPanel({ project, selection, assets, onChange, keep, onK
       <Row label="Offset X, %"><NumberField value={dx.value} mixed={dx.mixed} min={-100} max={100} step={1} decimals={1} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { dx: v / 100 }, li))} /></Row>
       <Row label="Offset Y, %"><NumberField value={dy.value} mixed={dy.mixed} min={-100} max={100} step={1} decimals={1} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { dy: v / 100 }, li))} /></Row>
       <Row label="Rotation, °"><NumberField value={rot.value} mixed={rot.mixed} min={-180} max={180} step={1} decimals={0} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { rotation: v }, li))} /></Row>
+      <Row label="Corner radius, %"><NumberField value={rad.value} mixed={rad.mixed} min={0} max={50} step={1} decimals={0} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { radius: v / 100 }, li))} /></Row>
+      {(rad.mixed || rad.value > 0) && <Row label="Corner smoothing, %"><NumberField value={smo.value} mixed={smo.mixed} min={0} max={100} step={5} decimals={0} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { smooth: v / 100 }, li))} /></Row>}
       <div className="align-row" role="group" aria-label="Align in content area">
         {ALIGN.map((a) => (
           <button key={a.how} className="icon" aria-label={a.label} data-tip={a.label} data-tip-pos="top" onClick={() => align(a.how)}>

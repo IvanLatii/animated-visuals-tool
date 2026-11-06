@@ -1,5 +1,10 @@
 import type { Layer } from '../model/types';
 
+/** «Зображення» шару для геометрії: для заливки це прямокутник розміром із шар (будь-який fit дає той самий результат). */
+export function fillBox(layer: Layer, W: number, H: number) {
+  return { width: Math.max(1, layer.w * W), height: Math.max(1, layer.h * H) };
+}
+
 /** Розмір і центр шару у пікселях вікна ДО власного перетворення (розтягування, зсуву, повороту). */
 export function baseBox(layer: Layer, fit: 'fit' | 'fill', img: { width: number; height: number }, W: number, H: number) {
   const rx = layer.x * W, ry = layer.y * H, rw = layer.w * W, rh = layer.h * H;

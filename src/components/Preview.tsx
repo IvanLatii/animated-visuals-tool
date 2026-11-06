@@ -12,6 +12,8 @@ interface Props {
   editSlot: boolean;
   onSlot: (r: Rect) => void;
   selection: string[];
+  /** Клік по порожньому місцю (поза зображенням) скидає вибір: далі вибрана «сцена» цілком. */
+  onDeselect: () => void;
   keep: boolean;
   activeLayer: number;
   canUndo: boolean;
@@ -34,7 +36,7 @@ const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 interface View { zoom: number; x: number; y: number } // zoom = множник відносно «вмістити», x/y — зсув у пікселях екрана
 
-export function Preview({ project, assets, t, editSlot, onSlot, selection, keep, activeLayer, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, editSlot, onSlot, selection, onDeselect, keep, activeLayer, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
@@ -118,6 +120,7 @@ export function Preview({ project, assets, t, editSlot, onSlot, selection, keep,
 
   // Середня кнопка миші (колесо натиснути й тягнути) — перетягування артборда.
   const onPointerDown = (e: PointerEvent) => {
+    if (e.button === 0 && !editSlot && !(e.target as Element).closest('.img-edit, .slot-edit, .zoombar')) { onDeselect(); return; }
     if (e.button !== 1) return;
     e.preventDefault();
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* штучна подія без реального вказівника */ }
@@ -160,7 +163,7 @@ export function Preview({ project, assets, t, editSlot, onSlot, selection, keep,
       <div ref={stageRef} className={`stage ${panning ? 'panning' : ''}`}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endPan} onPointerCancel={endPan}
         onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }} onDoubleClick={fitView}>
-        <div ref={wrapRef} className="canvas-wrap" style={{ width: w * scale, height: h * scale, transform: `translate(${view.x}px, ${view.y}px)`, visibility: box.w ? 'visible' : 'hidden' } as CSSProperties}>
+        <div ref={wrapRef} className={`canvas-wrap ${selection.length === 0 && !empty ? 'scene-sel' : ''}`} style={{ width: w * scale, height: h * scale, transform: `translate(${view.x}px, ${view.y}px)`, visibility: box.w ? 'visible' : 'hidden' } as CSSProperties}>
           <div className="marks" aria-hidden><i /><i /><i /><i /></div>
           <span className="cap top">Scene · {duration.toFixed(1)} s</span>
           <canvas ref={canvasRef} width={w} height={h} />
@@ -206,7 +209,7 @@ export function Preview({ project, assets, t, editSlot, onSlot, selection, keep,
         </div>
       </div>
       <div className="transport">
-        <button className="primary play" data-tip="Play / pause · Space · Home = to start" data-tip-pos="top" onClick={onTogglePlay} disabled={empty}>
+        <button className="primary play" data-tip="Play / pause · Space · Alt = to start" data-tip-pos="top" onClick={onTogglePlay} disabled={empty}>
           {playing ? <PauseIcon /> : <PlayIcon />}{playing ? 'Pause' : 'Play'}
         </button>
         <button className={`loop ${loop ? 'on' : ''}`} aria-pressed={loop} aria-label="Loop" data-tip="Loop playback" data-tip-pos="top" onClick={() => onToggleLoop(!loop)}><LoopIcon /></button>

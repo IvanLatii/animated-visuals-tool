@@ -2,7 +2,7 @@ import { useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import type { Project } from '../model/types';
 import { layerBounds } from '../render/layerGeometry';
 import { motions } from '../render/effects';
-import { buildTimeline, type Assets } from '../render/renderScene';
+import { buildTimeline, layerAsset, type Assets } from '../render/renderScene';
 
 interface Props {
   project: Project;
@@ -45,12 +45,11 @@ export function ImageEditor({ project, assets, selection, t, li, keep, toCanvas,
 
   const primary = project.frames.find((f) => f.id === selection[selection.length - 1]);
   const layer = primary?.layers[Math.min(li, (primary?.layers.length ?? 1) - 1)];
-  const img = layer ? assets.get(layer.src) : undefined;
-  if (!primary || !layer || !img) return null;
-
   const { slot } = project.stage;
   const cw = project.canvas.w, ch = project.canvas.h;
   const sw = slot.w * cw, sh = slot.h * ch, ox = slot.x * cw, oy = slot.y * ch;
+  const img = layer ? layerAsset(layer, assets, sw, sh) : undefined;
+  if (!primary || !layer || !img) return null;
   const fit = layer.fit ?? project.defaults.layerFit;
   const b = layerBounds(layer, fit, img, sw, sh);
 

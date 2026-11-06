@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import type { Project } from '../model/types';
 import { resolveFrame } from '../model/defaults';
 import { CloseIcon, ReplaceIcon, TrashIcon } from './icons';
@@ -13,43 +13,45 @@ interface Props {
   onPickFiles: (files: FileList) => void;
   onReplace: (id: string, file: File) => void;
   onClear: () => void;
+  /** Те, що стоїть між заголовком із контролами та самими кадрами (накладка й фон). */
+  children?: ReactNode;
 }
 
-export function FrameList({ project, selection, onSelect, onSelectAll, onRemove, onMove, onPickFiles, onReplace, onClear }: Props) {
+/** Заголовок Frames, під ним однакові кнопки на всю ширину, далі children (накладка/фон) і сам список кадрів. */
+export function FrameList({ project, selection, onSelect, onSelectAll, onRemove, onMove, onPickFiles, onReplace, onClear, children }: Props) {
   const addRef = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
   const replaceId = useRef<string | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const n = project.frames.length;
 
   return (
     <div className="frames-block">
-      <header>
-        <h2>Frames</h2>
-        <div className="head-actions">
-          {project.frames.length > 1 && <button className="link" onClick={onSelectAll}>Select all</button>}
-          <button className="icon danger" aria-label="Delete all frames" data-tip="Delete all frames" data-tip-pos="left"
-            disabled={project.frames.length === 0} onClick={onClear}>
-            <TrashIcon />
-          </button>
-          <button onClick={() => addRef.current?.click()}>+ Add</button>
-        </div>
-        <input ref={addRef} type="file" accept="image/*,video/*" multiple hidden
-          onChange={(e) => { if (e.target.files) onPickFiles(e.target.files); e.target.value = ''; }} />
-        <input ref={replaceRef} type="file" accept="image/*,video/*" hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file && replaceId.current) onReplace(replaceId.current, file);
-            e.target.value = '';
-          }} />
-      </header>
+      <h2>Frames{n > 0 && <span className="count">{n}</span>}</h2>
+      <div className="ctl-row">
+        <button onClick={() => addRef.current?.click()}>+ Add</button>
+        <button disabled={n < 2} onClick={onSelectAll}>Select all</button>
+        <button className="icon danger" aria-label="Delete all frames" data-tip="Delete all frames" data-tip-pos="left" disabled={n === 0} onClick={onClear}><TrashIcon /></button>
+      </div>
+      <input ref={addRef} type="file" accept="image/*,video/*" multiple hidden
+        onChange={(e) => { if (e.target.files) onPickFiles(e.target.files); e.target.value = ''; }} />
+      <input ref={replaceRef} type="file" accept="image/*,video/*" hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && replaceId.current) onReplace(replaceId.current, file);
+          e.target.value = '';
+        }} />
 
-      {project.frames.length === 0 ? (
+      {children}
+
+      {n === 0 ? (
         <p className="hint">Drop screenshots here or click Add</p>
       ) : (
         <ol>
           {project.frames.map((frame, i) => {
             const rf = resolveFrame(project, frame);
+            const img = frame.layers.find((l) => !l.fill), fill = frame.layers.find((l) => l.fill);
             const cls = ['frame', selection.includes(frame.id) ? 'selected' : '', dragOver === i && dragFrom !== null && dragFrom !== i ? 'drop-target' : ''].join(' ');
             return (
               <li key={frame.id} className={cls} draggable
@@ -66,11 +68,10 @@ export function FrameList({ project, selection, onSelect, onSelectAll, onRemove,
                   }
                 }}
                 onDragEnd={() => { setDragFrom(null); setDragOver(null); }}>
-                <span className="num">{i + 1}</span>
-                <span className="thumb"><img src={frame.layers[0].clip?.poster ?? frame.layers[0].src} alt="" draggable={false} /></span>
+                <span className="thumb" style={{ background: fill?.fill }}>{img ? <img src={img.clip?.poster ?? img.src} alt="" draggable={false} /> : <i className="swatch-thumb" />}</span>
                 <span className="meta">
                   <b className="fname" title={frame.name}>{frame.name || `Image ${i + 1}`}</b>
-                  <span className="dur">{rf.duration.toFixed(1)} s</span>
+                  <span className="dur">{i + 1} · {rf.duration.toFixed(1)} s</span>
                 </span>
                 <span className="acts">
                   <button className="icon danger" data-tip="Delete frame · Delete" data-tip-pos="left" aria-label={`Delete frame ${i + 1}`}

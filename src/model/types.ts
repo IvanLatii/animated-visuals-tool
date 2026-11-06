@@ -61,6 +61,10 @@ export interface ImageLayer {
   name?: string;
   /** Є — шар відео/GIF (src тоді файл відео), нема — статична картинка. */
   clip?: ClipInfo;
+  /** Є — це шар-заливка кольором (src порожній), малюється як прямокутник цього кольору. */
+  fill?: string;
+  /** Скруглення кутів шару: частка меншої сторони (0–0.5) і згладжування в стилі iOS (0–1, за замовчуванням 0.6). */
+  radius?: number; smooth?: number;
 }
 export type Layer = ImageLayer; // 'text' | '3d' — пізніше
 

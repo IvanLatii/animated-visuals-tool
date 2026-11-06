@@ -18,8 +18,9 @@ import { newProject } from './model/defaults';
 import type { Project } from './model/types';
 import { parseProject, projectFileName, serializeProject } from './model/projectFile';
 import { canPick, downloadText, isAbort, pickOpenHandle, pickSaveHandle, writeHandle, type FileHandle } from './projectIO';
-import { buildTimeline, loadAssets, projectDuration, type Assets } from './render/renderScene';
-import { addFrames, addLayer, applyLayerPatches, moveLayer, nudgeLayers, removeLayer, replaceLayer, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
+import { buildTimeline, layerAsset, loadAssets, projectDuration, type Assets } from './render/renderScene';
+import { canEyedrop, eyedrop } from './eyedropper';
+import { addFillLayer, setBackground, setLayerFill, addFrames, addLayer, applyLayerPatches, moveLayer, nudgeLayers, removeLayer, replaceLayer, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
 
@@ -61,7 +62,7 @@ export function App() {
   const selectLayer = useCallback((kind: 'background' | 'overlay') => { setSelection([]); setLayerSel(kind); anchor.current = null; }, []);
   const target: Target = selection.length > 0 ? 'frames' : layerSel ?? 'project'; // що показує Inspector
   const selectedFrame = project.frames.find((f) => f.id === selectedId);
-  const selImg = selectedFrame ? assets.get(selectedFrame.layers[Math.min(activeLayer, selectedFrame.layers.length - 1)].src) : undefined;
+  const selImg = selectedFrame ? layerAsset(selectedFrame.layers[Math.min(activeLayer, selectedFrame.layers.length - 1)], assets, project.stage.slot.w * project.canvas.w, project.stage.slot.h * project.canvas.h) : undefined;
   const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
 
   const seek = useCallback((time: number) => { tRef.current = time; setT(time); }, []);
@@ -211,10 +212,10 @@ export function App() {
     }
   }, [project, flash]);
 
-  const openProject = useCallback(async (file: File, handle: FileHandle | null = null) => {
+  const openProject = useCallback(async (file: File) => {
     try {
       const parsed = parseProject(await file.text());
-      fileHandle.current = handle;
+      fileHandle.current = null; // після відкриття ⌘S не перезаписує старий файл мовчки, а питає, куди зберегти
       const loaded = await loadAssets(parsed);
       setAssets((prev) => new Map([...prev, ...loaded])); // старі зображення лишаємо, щоб працювало скасування
       setProject(parsed);
@@ -231,7 +232,7 @@ export function App() {
     if (!canPick) { openRef.current?.click(); return; }
     try {
       const handle = await pickOpenHandle();
-      if (handle) await openProject(await handle.getFile(), handle);
+      if (handle) await openProject(await handle.getFile());
     } catch (e) {
       if (!isAbort(e)) setError(`Could not open: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -259,6 +260,31 @@ export function App() {
     if (!playing && tRef.current >= duration) seek(0);
     setPlaying((p) => !p);
   }, [duration, playing, seek]);
+
+  /** Піпетка: вибраний шар-заливка міняє колір, інакше нова заливка під шарами кадру; без вибраного кадру — колір фону сцени. */
+  const pipette = useCallback(async () => {
+    if (!canEyedrop) { flash('Eyedropper works in Chrome and Edge'); return; }
+    const c = await eyedrop();
+    if (!c) return;
+    const f = project.frames.find((x) => x.id === selectedId);
+    if (!f) { setProject((p) => setBackground(p, c)); return; }
+    const i = Math.min(activeLayer, f.layers.length - 1);
+    if (f.layers[i].fill) setProject((p) => setLayerFill(p, f.id, i, c));
+    else { setProject((p) => addFillLayer(p, f.id, c)); setActiveLayer(0); }
+  }, [project.frames, selectedId, activeLayer, flash]);
+
+  // Alt, натиснутий і відпущений сам (без інших клавіш і без перетягування), повертає таймлайн на початок.
+  useEffect(() => {
+    let clean = false;
+    const down = (e: KeyboardEvent) => {
+      if (e.key !== 'Alt') clean = false; // будь-яка інша клавіша разом з Alt — це вже комбінація
+      else if (!e.repeat) clean = !e.metaKey && !e.ctrlKey && !e.shiftKey;
+    };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Alt' && clean && !exportOpen && !isTyping(e.target, true)) seek(0); clean = false; };
+    const cancel = () => { clean = false; };
+    window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('pointerdown', cancel, true);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('pointerdown', cancel, true); };
+  }, [seek, exportOpen]);
 
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { saveLayout(layout); }, [layout]);
@@ -296,7 +322,8 @@ export function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey || exportOpen) return;
-      if (e.key === 'Home' && !isTyping(e.target, true)) { e.preventDefault(); seek(0); return; } // Home — таймлайн на початок
+      if (e.key === 'Home' && !isTyping(e.target, true)) { e.preventDefault(); seek(0); return; } // Home — таймлайн на початок (так само Alt, натиснутий окремо)
+      if (key === 'i' && !e.repeat && !isTyping(e.target, true)) { e.preventDefault(); void pipette(); return; } // I — піпетка
       const arrow = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key);
       if (e.code === 'Space' && !e.repeat && !isTyping(e.target)) { e.preventDefault(); togglePlay(); }
       else if (arrow && selection.length > 0 && !isTyping(e.target, true)) {
@@ -318,7 +345,7 @@ export function App() {
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
-  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen, undo, redo, activeLayer]);
+  }, [togglePlay, saveProject, requestOpen, project, selectedId, selection, selectOne, seek, exportOpen, undo, redo, activeLayer, pipette]);
 
   return (
     <div className={`app ${dropping ? 'dropping' : ''}`}
@@ -340,7 +367,7 @@ export function App() {
         <button data-tip="Save project to a new file · ⌘ ⇧ S" onClick={() => void saveProject(true)}>Save as</button>
         <input ref={openRef} type="file" accept=".json,application/json" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void openProject(f); e.target.value = ''; }} />
-        <b className="brand">Animated Visuals<i className="logo" aria-hidden /></b>
+        <b className="brand">Animated Visuals</b>
         <button className="primary export-btn" data-tip="Make the final MP4, GIF or PNG" data-tip-pos="left" onClick={() => setExportOpen(true)}>Export</button>
       </header>
       <div className="left">
@@ -363,7 +390,7 @@ export function App() {
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">
         <Preview project={project} assets={assets} t={t} editSlot={editSlot} onSlot={(r) => setProject((p) => setSlot(p, r))}
-          selection={selection} keep={keepProportions} activeLayer={activeLayer} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches, activeLayer))}
+          selection={selection} onDeselect={() => selectOne(null)} keep={keepProportions} activeLayer={activeLayer} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches, activeLayer))}
           canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} playing={playing} loop={loop} duration={duration}
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
@@ -376,7 +403,7 @@ export function App() {
       <Sidebar project={project} target={target} selection={selection} assets={assets} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
         keep={keepProportions} onKeep={setKeepProportions}
-        frameLayers={{ li: activeLayer, onSelect: setActiveLayer, onAdd: (id, f) => void addLayerFile(id, f), onRemove: (id, i) => { setProject((p) => removeLayer(p, id, i)); setActiveLayer(0); }, onReplace: (id, i, f) => void replaceLayerFile(id, i, f), onMove: moveLayerTo }}
+        frameLayers={{ li: activeLayer, onSelect: setActiveLayer, onAdd: (id, f) => void addLayerFile(id, f), onRemove: (id, i) => { setProject((p) => removeLayer(p, id, i)); setActiveLayer(0); }, onReplace: (id, i, f) => void replaceLayerFile(id, i, f), onMove: moveLayerTo, onAddFill: (id, c) => { setProject((p) => addFillLayer(p, id, c)); setActiveLayer(0); } }}
         slot={{ selectedImage, editSlot, onEditSlot: setEditSlot }}
         layer={{ onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => { setProject((p) => setStageImage(p, k, undefined)); setLayerSel(null); } }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />

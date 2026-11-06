@@ -22,7 +22,7 @@ export function replaceFrameImage(project: Project, id: string, src: string, nam
       ...(clip || hadClip ? rest : f), name: name ?? f.name,
       layers: f.layers.map((l, i) => {
         if (i !== 0) return l;
-        const { clip: _c, ...nl } = l; void _c;
+        const { clip: _c, fill: _f, ...nl } = l; void _c; void _f; // заливка при заміні стає картинкою
         return clip ? { ...nl, src, name: name ?? l.name, clip } : { ...nl, src, name: name ?? l.name };
       }),
     };
@@ -245,7 +245,7 @@ export function fitSlotToImage(project: Project, imgW: number, imgH: number): Pr
 }
 
 // --- Перетворення виділених зображень ---
-type LayerPatch = Partial<Pick<Layer, 'scaleX' | 'scaleY' | 'dx' | 'dy' | 'rotation'>>;
+type LayerPatch = Partial<Pick<Layer, 'scaleX' | 'scaleY' | 'dx' | 'dy' | 'rotation' | 'radius' | 'smooth'>>;
 
 /** Застосовує fn до шару li (за замовчуванням нижнього) кожного кадру з ids; якщо в кадрі менше шарів, до останнього. */
 export function mapLayersOf(project: Project, ids: string[], fn: (layer: Layer, frame: Frame) => Layer, li = 0): Project {
@@ -266,6 +266,16 @@ export function addLayer(project: Project, id: string, src: string, name?: strin
   });
 }
 
+/** Нова заливка кольором лягає під усі шари кадру (індекс 0), як фон. */
+export function addFillLayer(project: Project, id: string, color: string): Project {
+  return mapFrame(project, id, (f) => ({ ...f, layers: [{ ...imageLayer(''), fill: color, name: 'Fill' }, ...f.layers] }));
+}
+
+/** Міняє колір шару-заливки. */
+export function setLayerFill(project: Project, id: string, index: number, color: string): Project {
+  return mapFrame(project, id, (f) => ({ ...f, layers: f.layers.map((l, i) => (i === index && l.fill ? { ...l, fill: color } : l)) }));
+}
+
 /** Міняє картинку/кліп шару index, зберігаючи його розмір, зсув і поворот. Шар 0 — як заміна зображення кадру. */
 export function replaceLayer(project: Project, id: string, index: number, src: string, name?: string, clip?: ClipInfo): Project {
   if (index === 0) return replaceFrameImage(project, id, src, name, clip);
@@ -276,7 +286,7 @@ export function replaceLayer(project: Project, id: string, index: number, src: s
       ...(clip || hadClip ? rest : f),
       layers: f.layers.map((l, i) => {
         if (i !== index) return l;
-        const { clip: _c, ...nl } = l; void _c;
+        const { clip: _c, fill: _f, ...nl } = l; void _c; void _f;
         return clip ? { ...nl, src, name, clip } : { ...nl, src, name };
       }),
     };

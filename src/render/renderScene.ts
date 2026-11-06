@@ -1,6 +1,6 @@
 import { loadImage } from '../assets';
 import { isClip, restoreClip, type ClipAsset } from '../media/clipAsset';
-import { baseBox } from './layerGeometry';
+import { baseBox, fillBox } from './layerGeometry';
 import { clipSourceTime, resolveFrame, type ResolvedFrame } from '../model/defaults';
 import type { Layer, Project } from '../model/types';
 import { applyEasing } from './easing';
@@ -12,9 +12,14 @@ import { transitions, type Size } from './transitions';
 export type Asset = (CanvasImageSource & { width: number; height: number }) | ClipAsset;
 export type Assets = Map<string, Asset>;
 
+/** Зображення шару для геометрії й рамки: файл із assets, а для заливки — прямокутник розміром із шар. */
+export function layerAsset(layer: Layer, assets: Assets, W: number, H: number): { width: number; height: number } | undefined {
+  return layer.fill ? fillBox(layer, W, H) : assets.get(layer.src);
+}
+
 export async function loadAssets(project: Project): Promise<Assets> {
   const assets: Assets = new Map();
-  const layers = project.frames.flatMap((f) => f.layers);
+  const layers = project.frames.flatMap((f) => f.layers).filter((l) => !l.fill); // заливкам файл не потрібен
   const srcs = new Set(layers.map((l) => l.src));
   if (project.stage.background) srcs.add(project.stage.background);
   if (project.stage.overlay) srcs.add(project.stage.overlay);
@@ -85,7 +90,37 @@ export function projectDuration(project: Project): number {
   return buildTimeline(project).total;
 }
 
+/** Прямокутник зі скругленими кутами. smooth > 0 подовжує перехід кута в бік (як «corner smoothing» у Figma / iOS): 🟡 наближення, не точна формула Figma. */
+function smoothRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number, smooth: number) {
+  const r = Math.min(radius, w / 2, h / 2);
+  if (r <= 0) { ctx.rect(x, y, w, h); return; }
+  const e = Math.min(r * (1 + smooth), w / 2, h / 2), c = r * 0.4477; // e — де кривa починається на стороні, c — відстань контрольної точки від кута
+  ctx.moveTo(x + e, y);
+  ctx.lineTo(x + w - e, y);
+  ctx.bezierCurveTo(x + w - c, y, x + w, y + c, x + w, y + e);
+  ctx.lineTo(x + w, y + h - e);
+  ctx.bezierCurveTo(x + w, y + h - c, x + w - c, y + h, x + w - e, y + h);
+  ctx.lineTo(x + e, y + h);
+  ctx.bezierCurveTo(x + c, y + h, x, y + h - c, x, y + h - e);
+  ctx.lineTo(x, y + e);
+  ctx.bezierCurveTo(x, y + c, x + c, y, x + e, y);
+  ctx.closePath();
+}
+
 function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fill', assets: Assets, size: Size, frameT: number) {
+  if (layer.fill) { // заливка кольором: той самий поворот / розтягування / зсув, але без картинки
+    const { w: W, h: H } = size;
+    const b = baseBox(layer, 'fill', fillBox(layer, W, H), W, H);
+    ctx.save();
+    ctx.translate(b.cx + (layer.dx ?? 0) * W, b.cy + (layer.dy ?? 0) * H);
+    ctx.rotate(((layer.rotation ?? 0) * Math.PI) / 180);
+    ctx.scale(layer.scaleX ?? 1, layer.scaleY ?? 1);
+    ctx.translate(-b.cx, -b.cy);
+    ctx.fillStyle = layer.fill;
+    ctx.beginPath(); smoothRectPath(ctx, b.rx, b.ry, b.rw, b.rh, (layer.radius ?? 0) * Math.min(b.rw, b.rh), layer.smooth ?? 0.6); ctx.fill();
+    ctx.restore();
+    return;
+  }
   const asset = assets.get(layer.src);
   if (!asset) return;
   const source: CanvasImageSource = isClip(asset) ? asset.peek(layer.clip ? clipSourceTime(layer.clip, frameT) : 0) : asset;
@@ -99,7 +134,9 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fi
   ctx.rotate(((layer.rotation ?? 0) * Math.PI) / 180);
   ctx.scale(layer.scaleX ?? 1, layer.scaleY ?? 1);
   ctx.translate(-b.cx, -b.cy);
-  ctx.beginPath(); ctx.rect(b.rx, b.ry, b.rw, b.rh); ctx.clip();
+  // Скруглення накладається на видиму область зображення (для fit — саме зображення, для fill — рамка шару)
+  const vw = Math.min(b.w, b.rw), vh = Math.min(b.h, b.rh);
+  ctx.beginPath(); smoothRectPath(ctx, b.cx - vw / 2, b.cy - vh / 2, vw, vh, (layer.radius ?? 0) * Math.min(vw, vh), layer.smooth ?? 0.6); ctx.clip();
   ctx.drawImage(source, b.rx + (b.rw - b.w) / 2, b.ry + (b.rh - b.h) / 2, b.w, b.h);
   ctx.restore();
 }
