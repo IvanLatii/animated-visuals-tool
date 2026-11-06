@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Project } from '../model/types';
 import { resolveFrame } from '../model/defaults';
-import { TrashIcon } from './icons';
+import { CloseIcon, ReplaceIcon, TrashIcon } from './icons';
 
 interface Props {
   project: Project;
@@ -74,10 +74,10 @@ export function FrameList({ project, selection, onSelect, onSelectAll, onRemove,
                 </span>
                 <span className="acts">
                   <button className="icon danger" data-tip="Delete frame · Delete" data-tip-pos="left" aria-label={`Delete frame ${i + 1}`}
-                    onClick={(e) => { e.stopPropagation(); onRemove(frame.id); }}>×</button>
+                    onClick={(e) => { e.stopPropagation(); onRemove(frame.id); }}><CloseIcon /></button>
                   <button className="icon" data-tip="Replace image" data-tip-pos="left" aria-label={`Replace image of frame ${i + 1}`}
                     onClick={(e) => { e.stopPropagation(); replaceId.current = frame.id; replaceRef.current?.click(); }}>
-                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2.5 5h9M9 2.5 11.5 5 9 7.5M13.5 11h-9M7 8.5 4.5 11 7 13.5" /></svg>
+                    <ReplaceIcon />
                   </button>
                 </span>
               </li>

@@ -4,11 +4,12 @@ import { exportAll } from '../export/exportAll';
 import { gifMemoryBytes } from '../export/exportGif';
 import { fitToSize } from '../export/fit';
 import { settingsFromJob, toJob, type ExportSettings, type QualityMode } from '../export/presets';
-import { ExportAborted, exportSize } from '../export/renderFrames';
+import { ExportAborted, exportSize, mp4IsCapped } from '../export/renderFrames';
 import { canPick, pickExportHandle, writeHandle, type FileHandle } from '../projectIO';
 import type { ExportJob, Project } from '../model/types';
 import { projectDuration, type Assets } from '../render/renderScene';
 import { Modal } from './Modal';
+import { CloseIcon } from './icons';
 import { CheckRow, Hint, NumberField, Row, Seg, SliderRow, Tabs } from './ui';
 
 interface Props {
@@ -49,7 +50,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
   const empty = project.frames.length === 0;
   const duration = projectDuration(project);
   const job = useMemo(() => toJob(project, s), [project, s]);
-  const size = exportSize(project, s.scale);
+  const size = exportSize(project, s.scale, s.format);
   const isPng = s.format === 'png';
   const tooBig = job.format === 'gif' && gifMemoryBytes(project, job) > 1.5e9;
 
@@ -93,7 +94,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
   };
 
   const makeResult = (blob: Blob, j: ExportJob, note?: string, warn?: boolean): Result => {
-    const { w, h } = exportSize(project, j.scale);
+    const { w, h } = exportSize(project, j.scale, j.format);
     return { url: URL.createObjectURL(blob), name: `animation-${w}x${h}.${j.format}`, bytes: blob.size, format: j.format, blob, note, warn };
   };
 
@@ -124,7 +125,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
     await run(handle, async (signal, onStatus) => {
     const fit = await fitToSize(project, job, targetMb * 1e6, assets, allowScale, { signal, onStatus });
     onSettings(settingsFromJob(fit.job, s));
-    const note = `${fit.job.fps} fps, ${exportSize(project, fit.job.scale).w}×${exportSize(project, fit.job.scale).h}${fit.job.gif ? `, quality ${fit.job.gif.quality}` : `, ${(fit.job.mp4!.bitrate / 1e6).toFixed(1)} Mbit/s`}`;
+    const note = `${fit.job.fps} fps, ${exportSize(project, fit.job.scale, fit.job.format).w}×${exportSize(project, fit.job.scale, fit.job.format).h}${fit.job.gif ? `, quality ${fit.job.gif.quality}` : `, ${(fit.job.mp4!.bitrate / 1e6).toFixed(1)} Mbit/s`}`;
     return makeResult(fit.blob, fit.job,
       fit.fits ? `Fits. Settings: ${note}.` : `Could not fit into ${targetMb} MB. Smallest result: ${note}. Try MP4, a shorter animation or a smaller size.`,
       !fit.fits);
@@ -149,7 +150,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
         <Tabs label="File format" value={s.format} onChange={(format) => set({ format })}
           options={[{ id: 'mp4', label: 'MP4' }, { id: 'gif', label: 'GIF' }, { id: 'png', label: 'PNG' }]} />
         <span className="spacer" />
-        <button className="icon close" aria-label="Close" onClick={requestClose}>×</button>
+        <button className="icon close" aria-label="Close" onClick={requestClose}><CloseIcon /></button>
       </header>
 
       <div className="export-grid">
@@ -177,6 +178,7 @@ export function ExportPanel({ project, assets, t, settings: s, onSettings, open,
               </div>
               <div className="group">
                 <div className="grp">File size</div>
+                {s.format === 'mp4' && mp4IsCapped(project, s.scale) && <Hint>MP4 is limited to about 4K, so it will be exported at {size.w}×{size.h} instead of {Math.round(project.canvas.w * s.scale)}×{Math.round(project.canvas.h * s.scale)}.</Hint>}
                 <Row label="Estimate"><b className={`val ${estimate.bytes !== null && estimate.bytes > targetMb * 1e6 ? 'over' : ''}`}>{estimateText}</b></Row>
                 {tooBig && <Hint tone="warn">Too many frames for GIF at this size. Lower the FPS or size, or use MP4.</Hint>}
                 <Row label="Fit to, MB"><NumberField value={targetMb} min={0.5} max={500} step={0.5} decimals={1} onChange={setTargetMb} /></Row>

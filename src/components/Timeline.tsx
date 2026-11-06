@@ -8,7 +8,8 @@ interface Props {
   selection: string[];
   onSeek: (t: number) => void;
   onSelect: (id: string) => void;
-  onDuration: (id: string, d: number) => void;
+  /** trim = true, коли тримають ⌘/Ctrl: кліп обрізається замість зміни швидкості. */
+  onDuration: (id: string, d: number, trim: boolean) => void;
 }
 
 export function Timeline({ project, t, selection, onSeek, onSelect, onDuration }: Props) {
@@ -38,7 +39,7 @@ export function Timeline({ project, t, selection, onSeek, onSelect, onDuration }
   const edgeMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = edge.current;
     if (!d) return;
-    onDuration(d.id, Math.min(30, Math.max(0.1, Math.round((d.startDur + (e.clientX - d.startX) / d.pxPerSec) * 20) / 20)));
+    onDuration(d.id, Math.min(30, Math.max(0.1, Math.round((d.startDur + (e.clientX - d.startX) / d.pxPerSec) * 20) / 20)), e.metaKey || e.ctrlKey);
   };
 
   return (

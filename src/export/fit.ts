@@ -44,7 +44,7 @@ export async function fitMp4(project: Project, base: ExportJob, targetBytes: num
   const scaleSteps = allowScale ? [1, 0.9, 0.8, 0.7, 0.6, 0.5].filter((s) => s <= base.scale) : [base.scale];
   // Шукаємо першу комбінацію, де потрібний бітрейт ще не нижче порогу якості.
   const needed = (fps: number, scale: number) => {
-    const { w, h } = exportSize(project, scale);
+    const { w, h } = exportSize(project, scale, 'mp4');
     const bitrate = (targetBytes * SAFETY * 8) / dur;
     return { bitrate: Math.min(bitrate, job.mp4!.bitrate), ok: bitrate >= w * h * fps * MIN_BPP };
   };

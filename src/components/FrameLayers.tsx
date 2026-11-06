@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Project } from '../model/types';
+import { CloseIcon, ReplaceIcon } from './icons';
 import { Section } from './ui';
 
 interface Props {
@@ -63,11 +64,11 @@ export function FrameLayers({ project, selection, li, onSelect, onAdd, onRemove,
                 </span>
                 <span className="acts">
                   {n > 1
-                    ? <button className="icon danger" data-tip="Remove layer" data-tip-pos="left" aria-label={`Remove layer ${i + 1}`} onClick={(e) => { e.stopPropagation(); onRemove(frame.id, i); }}>×</button>
+                    ? <button className="icon danger" data-tip="Remove layer" data-tip-pos="left" aria-label={`Remove layer ${i + 1}`} onClick={(e) => { e.stopPropagation(); onRemove(frame.id, i); }}><CloseIcon /></button>
                     : <span />}
                   <button className="icon" data-tip="Replace image" data-tip-pos="left" aria-label={`Replace layer ${i + 1}`}
                     onClick={(e) => { e.stopPropagation(); replaceIndex.current = i; replaceRef.current?.click(); }}>
-                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2.5 5h9M9 2.5 11.5 5 9 7.5M13.5 11h-9M7 8.5 4.5 11 7 13.5" /></svg>
+                    <ReplaceIcon />
                   </button>
                 </span>
               </li>

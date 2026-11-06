@@ -65,6 +65,12 @@ export function App() {
   const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
 
   const seek = useCallback((time: number) => { tRef.current = time; setT(time); }, []);
+  const pendingSeek = useRef<string | null>(null);
+  useEffect(() => { // щойно доданий кадр одразу видно на сцені
+    if (!pendingSeek.current) return;
+    const it = buildTimeline(project).items.find((x) => x.rf.frame.id === pendingSeek.current);
+    if (it) { seek(it.start); pendingSeek.current = null; }
+  }, [project, seek]);
 
   const selectFrame = useCallback((id: string, mode: 'single' | 'toggle' | 'range') => {
     if (mode === 'single') {
@@ -108,6 +114,7 @@ export function App() {
     });
     setProject((p) => addFrames(p, loaded.map((l) => l.frame)));
     selectOne(loaded[loaded.length - 1].frame.id);
+    pendingSeek.current = loaded[loaded.length - 1].frame.id; // після оновлення проєкту перемотаємо до цього кадру
   }, [selectOne]);
 
   /** Додає картинку, GIF чи відео шаром поверх вибраного кадру. */
@@ -289,6 +296,7 @@ export function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey || exportOpen) return;
+      if (e.key === 'Home' && !isTyping(e.target, true)) { e.preventDefault(); seek(0); return; } // Home — таймлайн на початок
       const arrow = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key);
       if (e.code === 'Space' && !e.repeat && !isTyping(e.target)) { e.preventDefault(); togglePlay(); }
       else if (arrow && selection.length > 0 && !isTyping(e.target, true)) {
@@ -332,7 +340,7 @@ export function App() {
         <button data-tip="Save project to a new file · ⌘ ⇧ S" onClick={() => void saveProject(true)}>Save as</button>
         <input ref={openRef} type="file" accept=".json,application/json" hidden
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void openProject(f); e.target.value = ''; }} />
-        <b className="brand">Animated Visuals</b>
+        <b className="brand">Animated Visuals<i className="logo" aria-hidden /></b>
         <button className="primary export-btn" data-tip="Make the final MP4, GIF or PNG" data-tip-pos="left" onClick={() => setExportOpen(true)}>Export</button>
       </header>
       <div className="left">
@@ -361,7 +369,7 @@ export function App() {
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
           onChange={(timeline) => setLayout((l) => ({ ...l, timeline }))} onReset={() => setLayout((l) => ({ ...l, timeline: DEFAULT_LAYOUT.timeline }))} />
         <Timeline project={project} t={t} selection={selection} onSeek={seek} onSelect={selectOne}
-          onDuration={(id, d) => setProject((p) => setFrameDuration(p, id, d))} />
+          onDuration={(id, d, trim) => setProject((p) => setFrameDuration(p, id, d, trim ? 'trim' : undefined))} />
       </div>
       <Resizer axis="x" invert label="Right panel width" value={layout.right} min={LIMITS.right[0]} max={LIMITS.right[1]}
         onChange={(right) => setLayout((l) => ({ ...l, right }))} onReset={() => setLayout((l) => ({ ...l, right: DEFAULT_LAYOUT.right }))} />

@@ -33,7 +33,7 @@ export const TRANSITION_DEFAULTS: Record<TransitionType, Partial<Transition>> = 
   'blur-dissolve': { duration: 0.5, easing: { type: 'ease-in-out', strength: 2 } },
 };
 
-export const DEFAULT_MOTION: Motion = { type: 'zoom-in', intensity: 0.12, easing: MOTION_EASING };
+export const DEFAULT_MOTION: Motion = { type: 'none', intensity: 0.12, easing: MOTION_EASING };
 export const DEFAULT_TRANSITION: Transition = { type: 'crossfade', duration: 0.3, easing: TRANSITION_EASING };
 
 export const DEFAULTS: Defaults = {

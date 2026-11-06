@@ -4,7 +4,7 @@ import * as A from '../state/projectActions';
 import { MOTION_PROFILES } from '../model/profiles';
 import { MotionControls, TransitionControls } from './AnimationControls';
 import { FitControls } from './FitControls';
-import { NumberField, Row, Section, SelectRow, Seg, SliderRow } from './ui';
+import { CheckRow, NumberField, Row, Section, SelectRow, Seg, SliderRow } from './ui';
 
 interface Props {
   project: Project;
@@ -68,6 +68,7 @@ export function AnimatePanel({ project, selection, scope, duration, onChange }: 
               options={[{ id: '', label: 'Apply…' }, ...MOTION_PROFILES.map((p) => ({ id: p.id, label: p.label }))]} />
             <MotionControls value={project.defaults.motion} overridden={false} onChange={(patch) => onChange((pr) => A.setDefaultMotion(pr, patch))} />
             <TransitionControls value={project.defaults.transitionOut} overridden={false} onChange={(patch) => onChange((pr) => A.setDefaultTransition(pr, patch))} />
+            {project.frames.length > 1 && <CheckRow label="Loop back to first frame" checked={project.defaults.loopBack ?? false} onChange={(v) => onChange((pr) => A.setLoopBack(pr, v))} />}
           </>
         )}
       </Section>

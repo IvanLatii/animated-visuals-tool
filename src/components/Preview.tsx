@@ -3,6 +3,7 @@ import type { Project, Rect } from '../model/types';
 import { onClipFrame } from '../media/clipAsset';
 import { renderScene, type Assets } from '../render/renderScene';
 import { ImageEditor } from './ImageEditor';
+import { LoopIcon, PauseIcon, PlayIcon } from './icons';
 
 interface Props {
   project: Project;
@@ -205,8 +206,10 @@ export function Preview({ project, assets, t, editSlot, onSlot, selection, keep,
         </div>
       </div>
       <div className="transport">
-        <button className="primary play" data-tip="Play / pause · Space" data-tip-pos="top" onClick={onTogglePlay} disabled={empty}>{playing ? '❚❚  Pause' : '▶  Play'}</button>
-        <label className="chk"><input type="checkbox" checked={loop} onChange={(e) => onToggleLoop(e.target.checked)} /> Loop</label>
+        <button className="primary play" data-tip="Play / pause · Space · Home = to start" data-tip-pos="top" onClick={onTogglePlay} disabled={empty}>
+          {playing ? <PauseIcon /> : <PlayIcon />}{playing ? 'Pause' : 'Play'}
+        </button>
+        <button className={`loop ${loop ? 'on' : ''}`} aria-pressed={loop} aria-label="Loop" data-tip="Loop playback" data-tip-pos="top" onClick={() => onToggleLoop(!loop)}><LoopIcon /></button>
         <span className="time">{Math.min(t, duration).toFixed(2)} / {duration.toFixed(2)} s</span>
       </div>
     </section>

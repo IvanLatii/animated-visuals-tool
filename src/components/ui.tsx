@@ -41,8 +41,8 @@ export function Section({ id, title, defaultOpen = true, aside, children }:
 }
 
 /** wide: контроль займає половину рядка (як таби над ним). */
-export function Row({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
-  return <label className={`r ${wide ? 'wide' : ''}`}><span className="lab">{label}</span><span className="ctl">{children}</span></label>;
+export function Row({ label, children, wide, stack }: { label: string; children: ReactNode; wide?: boolean; stack?: boolean }) {
+  return <label className={`r ${wide ? 'wide' : ''} ${stack ? 'stack' : ''}`}><span className="lab">{label}</span><span className="ctl">{children}</span></label>;
 }
 
 export function Hint({ children, tone }: { children: ReactNode; tone?: 'warn' }) {

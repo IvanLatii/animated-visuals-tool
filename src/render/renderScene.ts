@@ -29,8 +29,16 @@ export async function loadAssets(project: Project): Promise<Assets> {
 /** Кадри з відео/GIF для кожного шару в момент t (секунди сцени): [актив, момент у джерелі]. */
 function clipsAt(project: Project, t: number, assets: Assets): [ClipAsset, number][] {
   const out: [ClipAsset, number][] = [];
-  const { items, total } = buildTimeline(project);
+  const tl = buildTimeline(project);
+  const { items, total } = tl;
   const time = Math.min(Math.max(t, 0), total);
+  const wrap = loopBackDuration(project, tl);
+  if (wrap > 0 && time > total - wrap) { // у кінці на екрані ще й початок першого кадру
+    for (const l of items[0].rf.frame.layers) {
+      const a = l.clip ? assets.get(l.src) : undefined;
+      if (l.clip && isClip(a)) out.push([a, clipSourceTime(l.clip, 0)]);
+    }
+  }
   for (const it of items) {
     if (time < it.start - it.transIn || time > it.end) continue;
     for (const l of it.rf.frame.layers) {
@@ -64,6 +72,13 @@ export function buildTimeline(project: Project): Timeline {
     return { rf, start, end, transIn };
   });
   return { items, total: cursor };
+}
+
+/** Скільки секунд наприкінці йде перехід від останнього кадру до першого (0 — немає). */
+function loopBackDuration(project: Project, tl: Timeline): number {
+  const first = tl.items[0], last = tl.items[tl.items.length - 1];
+  if (!project.defaults.loopBack || tl.items.length < 2 || last.rf.transitionOut.type === 'cut') return 0;
+  return Math.min(last.rf.transitionOut.duration, last.rf.duration, first.rf.duration);
 }
 
 export function projectDuration(project: Project): number {
@@ -155,7 +170,8 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
   };
 
   const fitDefault = project.defaults.layerFit;
-  const { items, total } = buildTimeline(project);
+  const tl = buildTimeline(project);
+  const { items, total } = tl;
   if (!items.length) { drawOverlay(); return; }
   const time = Math.min(Math.max(t, 0), total);
 
@@ -196,6 +212,7 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
     return (time - from) / Math.max(1e-6, it.end - from);
   };
 
+  const wrapD = loopBackDuration(project, tl);
   const prev = items[idx - 1];
   const inTransition = prev && cur.transIn > 0 && time < cur.start;
   if (inTransition) {
@@ -206,6 +223,17 @@ export function renderScene(project: Project, t: number, canvas: HTMLCanvasEleme
       applyEasing(tr.easing, p),
       () => drawFrame(ctx, prev.rf, fitDefault, progressOf(prev), assets, size, Math.max(0, time - prev.start), noMotion),
       () => drawFrame(ctx, cur.rf, fitDefault, progressOf(cur), assets, size, Math.max(0, time - cur.start), noMotion),
+      size,
+    );
+  } else if (wrapD > 0 && time > total - wrapD) {
+    // Зациклення: наприкінці останній кадр переходить у перший тим самим ефектом
+    const last = items[items.length - 1], first = items[0];
+    const tr = last.rf.transitionOut;
+    transitions[tr.type](
+      ctx,
+      applyEasing(tr.easing, (time - (total - wrapD)) / wrapD),
+      () => drawFrame(ctx, last.rf, fitDefault, progressOf(last), assets, size, Math.max(0, time - last.start), noMotion),
+      () => drawFrame(ctx, first.rf, fitDefault, 0, assets, size, 0, noMotion),
       size,
     );
   } else {

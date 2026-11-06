@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import type { Project } from '../model/types';
 import { FrameList } from './FrameList';
-import { TrashIcon } from './icons';
+import { ReplaceIcon, TrashIcon } from './icons';
 
 type Kind = 'background' | 'overlay';
 
@@ -31,26 +31,23 @@ function LayerRow({ kind, project, selected, onSelect, onPick, onClear }: {
   const name = project.stage[kind === 'background' ? 'backgroundName' : 'overlayName'];
   const label = kind === 'background' ? 'Background' : 'Overlay';
   return (
-    <div className={`frame lrow ${selected ? 'selected' : ''}`} onClick={onSelect}>
-      <span className={`thumb ${src ? '' : 'empty'}`}>{src && <img src={src} alt="" />}</span>
-      <span className="meta">
-        <b className="fname">{label}</b>
-        <span className="dur">{src ? name || 'image' : 'not set'}</span>
-      </span>
-      <span className="acts row">
-        {src ? (
-          <>
+    <div className="frames-block">
+      <header>
+        <h2>{label}</h2>
+        {!src && <button onClick={() => ref.current?.click()}>+ Add</button>}
+      </header>
+      {src && (
+        <div className={`frame lrow ${selected ? 'selected' : ''}`} onClick={onSelect}>
+          <span className="thumb"><img src={src} alt="" /></span>
+          <span className="meta"><b className="fname" title={name}>{name || 'image'}</b></span>
+          <span className="acts row">
             <button className="icon" data-tip={`Replace ${label.toLowerCase()}`} data-tip-pos="left" aria-label={`Replace ${label.toLowerCase()}`}
-              onClick={(e) => { e.stopPropagation(); ref.current?.click(); }}>
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden><path d="M2.5 5h9M9 2.5 11.5 5 9 7.5M13.5 11h-9M7 8.5 4.5 11 7 13.5" /></svg>
-            </button>
+              onClick={(e) => { e.stopPropagation(); ref.current?.click(); }}><ReplaceIcon /></button>
             <button className="icon danger" data-tip={`Remove ${label.toLowerCase()}`} data-tip-pos="left" aria-label={`Remove ${label.toLowerCase()}`}
               onClick={(e) => { e.stopPropagation(); onClear(); }}><TrashIcon /></button>
-          </>
-        ) : (
-          <button onClick={(e) => { e.stopPropagation(); ref.current?.click(); }}>+ Add</button>
-        )}
-      </span>
+          </span>
+        </div>
+      )}
       <input ref={ref} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''; }} />
     </div>
   );

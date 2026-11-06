@@ -3,8 +3,24 @@ import { prepareClips, projectDuration, renderScene, type Assets } from '../rend
 
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2); // H.264 і GIF-кодувальник люблять парні розміри
 
-export function exportSize(project: Project, scale: number) {
-  return { w: even(project.canvas.w * scale), h: even(project.canvas.h * scale) };
+/** H.264 у браузерах кодує не більше приблизно 4K; більші розміри (наприклад 3240×3240) кодувальник відхиляє. */
+export const MP4_MAX_PIXELS = 3840 * 2160;
+export const MP4_MAX_SIDE = 4096;
+
+/** Розмір файлу експорту. Для MP4 (format = 'mp4') зменшується до межі кодувальника, пропорції зберігаються. */
+export function exportSize(project: Project, scale: number, format?: 'mp4' | 'gif' | 'png') {
+  let w = project.canvas.w * scale, h = project.canvas.h * scale;
+  if (format === 'mp4') {
+    const k = Math.min(1, Math.sqrt(MP4_MAX_PIXELS / (w * h)), MP4_MAX_SIDE / Math.max(w, h));
+    w *= k; h *= k;
+  }
+  return { w: even(w), h: even(h) };
+}
+
+/** Чи MP4 при цьому масштабі доведеться зменшити проти налаштованого розміру. */
+export function mp4IsCapped(project: Project, scale: number): boolean {
+  const a = exportSize(project, scale), b = exportSize(project, scale, 'mp4');
+  return a.w !== b.w || a.h !== b.h;
 }
 
 export function frameCount(project: Project, fps: number): number {

@@ -48,6 +48,10 @@ export function setClip(project: Project, ids: string[], patch: Partial<Pick<Cli
   };
 }
 
+export function setLoopBack(project: Project, on: boolean): Project {
+  return { ...project, defaults: { ...project.defaults, loopBack: on } };
+}
+
 export function setClipFit(project: Project, fit: 'speed' | 'trim'): Project {
   return { ...project, defaults: { ...project.defaults, clipFit: fit } };
 }
@@ -71,7 +75,8 @@ export function moveFrame(project: Project, from: number, to: number): Project {
 }
 
 /** duration === undefined скидає до значення за замовчуванням. */
-export function setFrameDuration(project: Project, id: string, duration: number | undefined): Project {
+/** fit — разова зміна режиму для кліпів (⌘/Ctrl при перетягуванні краю дає 'trim'); без неї береться defaults.clipFit. */
+export function setFrameDuration(project: Project, id: string, duration: number | undefined, fit?: 'speed' | 'trim'): Project {
   return {
     ...project,
     frames: project.frames.map((f) => {
@@ -80,7 +85,7 @@ export function setFrameDuration(project: Project, id: string, duration: number 
       void _old;
       const ci = f.layers.findIndex((l) => l.clip);
       const clip = f.layers[ci]?.clip;
-      if (clip && duration !== undefined && project.defaults.clipFit !== 'trim') {
+      if (clip && duration !== undefined && (fit ?? project.defaults.clipFit) !== 'trim') {
         // Режим Speed: кліп вміщується цілком, швидкість підлаштовується під нову тривалість
         const speed = Math.min(8, Math.max(0.1, (clip.end - clip.start) / duration));
         return { ...rest, layers: f.layers.map((l, i) => (i === ci ? { ...l, clip: { ...clip, speed } } : l)) };
