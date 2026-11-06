@@ -119,12 +119,15 @@ export function setFrameAscii(project: Project, id: string, patch: Partial<Ascii
   });
 }
 
+/** Вибір Fit/Fill також скидає ручні розмір, зсув і поворот: інакше правки зверху ховають результат і здається, що кнопка не працює. undefined лише знімає перевизначення. */
 export function setFrameFit(project: Project, id: string, fit: 'fit' | 'fill' | undefined): Project {
   return mapFrame(project, id, (f) => ({
     ...f,
     layers: f.layers.map((l) => {
-      const { fit: _old, ...rest } = l; void _old;
-      return fit === undefined ? rest : { ...rest, fit };
+      const { fit: _old, scaleX: _a, scaleY: _b, dx: _c, dy: _d, rotation: _e, ...rest } = l;
+      void _old; void _a; void _b; void _c; void _d; void _e;
+      if (fit === undefined) return { ...rest, scaleX: l.scaleX, scaleY: l.scaleY, dx: l.dx, dy: l.dy, rotation: l.rotation };
+      return { ...rest, fit };
     }),
   }));
 }

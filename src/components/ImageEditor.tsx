@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent as RPointerEvent } from 'react';
+import { useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import type { Project } from '../model/types';
 import { layerBounds } from '../render/layerGeometry';
 import { motions } from '../render/effects';
@@ -35,10 +35,12 @@ const HANDLES: { name: string; hx: number; hy: number }[] = [
 const clampScale = (v: number) => Math.min(8, Math.max(0.05, v));
 const norm = (a: number) => ((((a + 180) % 360) + 360) % 360) - 180;
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const SNAP_PX = 8; // відстань магніту в екранних пікселях
 
 /** Рамка вибраного зображення на артборді: тягнути всередині — рухає, за маркери — змінює розмір, за кружечок зверху — повертає. */
 export function ImageEditor({ project, assets, selection, t, keep, toCanvas, onPatches }: Props) {
   const d = useRef<Drag | null>(null); // поточне перетягування живе між подіями вказівника
+  const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] }); // напрямні магніту, у пікселях полотна
 
   const primary = project.frames.find((f) => f.id === selection[selection.length - 1]);
   const layer = primary?.layers[0];
@@ -92,7 +94,29 @@ export function ImageEditor({ project, assets, selection, t, keep, toCanvas, onP
     const patches: Record<string, { scaleX?: number; scaleY?: number; dx?: number; dy?: number; rotation?: number }> = {};
 
     if (s.kind === 'move') {
-      const v = toLayer(s, ddx, ddy);
+      let mx = ddx, my = ddy;
+      const gx: number[] = [], gy: number[] = [];
+      if (!e.altKey) { // Alt вимикає магніт
+        // Магніт: краї й центр видимої рамки липнуть до країв і центру вікна вмісту
+        const k = toCanvas({ clientX: 1, clientY: 0 }).x - toCanvas({ clientX: 0, clientY: 0 }).x;
+        const thr = SNAP_PX * Math.abs(k);
+        const bw = s.w0 * Math.abs(Math.cos(s.theta)) + s.h0 * Math.abs(Math.sin(s.theta));
+        const bh = s.w0 * Math.abs(Math.sin(s.theta)) + s.h0 * Math.abs(Math.cos(s.theta));
+        const fit1 = (center: number, half: number, targets: number[]) => {
+          let best: { off: number; at: number } | null = null;
+          for (const edge of [-half, 0, half]) for (const at of targets) {
+            const off = at - (center + edge);
+            if (Math.abs(off) <= thr && (!best || Math.abs(off) < Math.abs(best.off))) best = { off, at };
+          }
+          return best;
+        };
+        const bx = fit1(s.c.x + ddx, bw / 2, [ox, ox + sw / 2, ox + sw]);
+        const by = fit1(s.c.y + ddy, bh / 2, [oy, oy + sh / 2, oy + sh]);
+        if (bx) { mx += bx.off; gx.push(bx.at); }
+        if (by) { my += by.off; gy.push(by.at); }
+      }
+      setGuides({ x: gx, y: gy });
+      const v = toLayer(s, mx, my);
       for (const [id, k] of Object.entries(s.snap)) patches[id] = { dx: k.dx + v.x / s.sw, dy: k.dy + v.y / s.sh };
     } else if (s.kind === 'rotate') {
       const delta = ((Math.atan2(p.y - s.c.y, p.x - s.c.x) - Math.atan2(s.start.y - s.c.y, s.start.x - s.c.x)) * 180) / Math.PI;
@@ -126,12 +150,15 @@ export function ImageEditor({ project, assets, selection, t, keep, toCanvas, onP
     onPatches(patches);
   };
 
-  const end = () => { d.current = null; };
+  const end = () => { d.current = null; setGuides({ x: [], y: [] }); };
   const bind = (kind: Kind, hx = 0, hy = 0) => ({
     onPointerDown: (e: RPointerEvent) => down(e, kind, hx, hy), onPointerMove: move, onPointerUp: end, onPointerCancel: end,
   });
 
   return (
+    <>
+    {guides.x.map((x) => <i key={`gx${x}`} className="snap-line v" style={{ left: `${(x / cw) * 100}%` }} />)}
+    {guides.y.map((y) => <i key={`gy${y}`} className="snap-line h" style={{ top: `${(y / ch) * 100}%` }} />)}
     <div className="img-edit" style={{
       left: `${((cx - dispW / 2) / cw) * 100}%`, top: `${((cy - dispH / 2) / ch) * 100}%`,
       width: `${(dispW / cw) * 100}%`, height: `${(dispH / ch) * 100}%`, transform: `rotate(${dispRot}deg)`,
@@ -139,5 +166,6 @@ export function ImageEditor({ project, assets, selection, t, keep, toCanvas, onP
       {HANDLES.map((h) => <i key={h.name} className={`hd hd-${h.name}`} {...bind('resize', h.hx, h.hy)} />)}
       <i className="hd hd-rot" {...bind('rotate')} />
     </div>
+    </>
   );
 }

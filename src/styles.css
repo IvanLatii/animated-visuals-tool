@@ -343,3 +343,8 @@ button.icon.danger:hover:not(:disabled) { border-color: var(--danger); color: va
 .thumb.empty { width: 44px; height: 44px; border: 1px dashed var(--line-strong); display: block; }
 .layer-preview { background: var(--bg); background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 14px 14px; padding: 12px; display: flex; justify-content: center; border: 1px solid var(--line); }
 .layer-preview img { max-width: 100%; max-height: 160px; display: block; }
+
+/* Напрямні магніту при перетягуванні зображення */
+.snap-line { position: absolute; background: #ff2d8a; pointer-events: none; z-index: 5; }
+.snap-line.v { top: 0; bottom: 0; width: 1px; }
+.snap-line.h { left: 0; right: 0; height: 1px; }
