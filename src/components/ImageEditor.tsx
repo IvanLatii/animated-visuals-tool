@@ -9,6 +9,7 @@ interface Props {
   assets: Assets;
   selection: string[];
   t: number; // момент сцени: рамка враховує рух кадру, тож збігається з тим, що видно
+  li: number; // який шар кадру редагується
   keep: boolean; // замок пропорцій (Shift вмикає пропорції на час перетягування)
   /** Екранна точка → піксель полотна (з урахуванням масштабу й панорами). */
   toCanvas: (e: { clientX: number; clientY: number }) => { x: number; y: number };
@@ -38,12 +39,12 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const SNAP_PX = 8; // відстань магніту в екранних пікселях
 
 /** Рамка вибраного зображення на артборді: тягнути всередині — рухає, за маркери — змінює розмір, за кружечок зверху — повертає. */
-export function ImageEditor({ project, assets, selection, t, keep, toCanvas, onPatches }: Props) {
+export function ImageEditor({ project, assets, selection, t, li, keep, toCanvas, onPatches }: Props) {
   const d = useRef<Drag | null>(null); // поточне перетягування живе між подіями вказівника
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] }); // напрямні магніту, у пікселях полотна
 
   const primary = project.frames.find((f) => f.id === selection[selection.length - 1]);
-  const layer = primary?.layers[0];
+  const layer = primary?.layers[Math.min(li, (primary?.layers.length ?? 1) - 1)];
   const img = layer ? assets.get(layer.src) : undefined;
   if (!primary || !layer || !img) return null;
 
@@ -76,8 +77,8 @@ export function ImageEditor({ project, assets, selection, t, keep, toCanvas, onP
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* штучна подія без реального вказівника */ }
     const snap: Record<string, Snap> = {};
     for (const f of project.frames) {
-      if (!selection.includes(f.id) || !f.layers[0]) continue;
-      const l = f.layers[0];
+      if (!selection.includes(f.id) || !f.layers.length) continue;
+      const l = f.layers[Math.min(li, f.layers.length - 1)];
       snap[f.id] = { sx: l.scaleX ?? 1, sy: l.scaleY ?? 1, dx: l.dx ?? 0, dy: l.dy ?? 0, rot: l.rotation ?? 0 };
     }
     d.current = {
@@ -131,11 +132,37 @@ export function ImageEditor({ project, assets, selection, t, keep, toCanvas, onP
       const k2 = s.multi ? 2 : 1; // кілька виділених масштабуються навколо власних центрів, один — від протилежного краю
       let fx = s.hx !== 0 ? Math.max(0.05, (s.w0 + s.hx * ldx * k2) / s.w0) : 1;
       let fy = s.hy !== 0 ? Math.max(0.05, (s.h0 + s.hy * ldy * k2) / s.h0) : 1;
-      if (keep || e.shiftKey) { // замок пропорцій або Shift
-        if (s.hx !== 0 && s.hy !== 0) fx = fy = (fx + fy) / 2;
-        else if (s.hx !== 0) fy = fx;
-        else fx = fy;
+      const gx: number[] = [], gy: number[] = [];
+      const snapOk = !s.multi && !e.altKey && Math.abs(Math.sin(s.theta)) < 1e-3 && Math.cos(s.theta) > 0; // лише без повороту, для одного зображення
+      let sxh: { f: number; at: number } | null = null, syh: { f: number; at: number } | null = null;
+      if (snapOk) {
+        // Магніт при розтягуванні: рухомий край липне до країв і центру вікна; протилежний край стоїть на місці
+        const thr = SNAP_PX * Math.abs(toCanvas({ clientX: 1, clientY: 0 }).x - toCanvas({ clientX: 0, clientY: 0 }).x);
+        const pick = (opp: number, dir: number, size0: number, f: number, targets: number[]) => {
+          const edge = opp + dir * size0 * f;
+          let best: { f: number; at: number } | null = null;
+          for (const at of targets) {
+            const nf = (dir * (at - opp)) / size0;
+            if (nf > 0.05 && Math.abs(at - edge) <= thr && (!best || Math.abs(at - edge) < Math.abs(best.at - edge))) best = { f: nf, at };
+          }
+          return best;
+        };
+        if (s.hx !== 0) sxh = pick(s.c.x - s.hx * s.w0 / 2, s.hx, s.w0, fx, [ox, ox + sw / 2, ox + sw]);
+        if (s.hy !== 0) syh = pick(s.c.y - s.hy * s.h0 / 2, s.hy, s.h0, fy, [oy, oy + sh / 2, oy + sh]);
       }
+      if (keep || e.shiftKey) { // замок пропорцій або Shift
+        if (s.hx !== 0 && s.hy !== 0) {
+          fx = fy = (fx + fy) / 2;
+          // з пропорціями магнітимо ту вісь, що ближча до цілі
+          const dx1 = sxh ? Math.abs(sxh.f - fx) : Infinity, dy1 = syh ? Math.abs(syh.f - fy) : Infinity;
+          if (dx1 <= dy1 && sxh) { fx = fy = sxh.f; gx.push(sxh.at); } else if (syh) { fx = fy = syh.f; gy.push(syh.at); }
+        } else if (s.hx !== 0) { fy = fx; if (sxh) { fx = fy = sxh.f; gx.push(sxh.at); } }
+        else { fx = fy; if (syh) { fx = fy = syh.f; gy.push(syh.at); } }
+      } else {
+        if (sxh) { fx = sxh.f; gx.push(sxh.at); }
+        if (syh) { fy = syh.f; gy.push(syh.at); }
+      }
+      setGuides({ x: gx, y: gy });
       let shiftX = 0, shiftY = 0;
       if (!s.multi) {
         const lx = s.hx !== 0 ? (s.hx * (s.w0 * fx - s.w0)) / 2 : 0;

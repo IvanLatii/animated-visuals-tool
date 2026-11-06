@@ -29,19 +29,20 @@ export function replaceFrameImage(project: Project, id: string, src: string, nam
 }
 
 /** Зміна параметрів кліпу кадру. Довжина (початок, кінець, швидкість) міняє тривалість кадру, тож власну тривалість знімаємо: кадр знову слідує за кліпом. */
-export function setClip(project: Project, ids: string[], patch: Partial<Pick<ClipInfo, 'start' | 'end' | 'speed' | 'loop'>>): Project {
+export function setClip(project: Project, ids: string[], patch: Partial<Pick<ClipInfo, 'start' | 'end' | 'speed' | 'loop'>>, li?: number): Project {
   const lengthChanges = patch.start !== undefined || patch.end !== undefined || patch.speed !== undefined;
   return {
     ...project,
     frames: project.frames.map((f) => {
-      const c = f.layers[0]?.clip;
+      const idx = li !== undefined && f.layers[li]?.clip ? li : f.layers.findIndex((l) => l.clip);
+      const c = f.layers[idx]?.clip;
       if (!ids.includes(f.id) || !c) return f;
       const next = { ...c, ...patch };
       next.start = Math.min(Math.max(0, next.start), Math.max(0, c.duration - 0.05));
       next.end = Math.min(c.duration, Math.max(next.start + 0.05, next.end));
       next.speed = Math.min(8, Math.max(0.1, next.speed));
       const { duration: _d, ...rest } = f; void _d;
-      return { ...(lengthChanges ? rest : f), layers: f.layers.map((l, i) => (i === 0 ? { ...l, clip: next } : l)) };
+      return { ...(lengthChanges ? rest : f), layers: f.layers.map((l, i) => (i === idx ? { ...l, clip: next } : l)) };
     }),
   };
 }
@@ -76,11 +77,12 @@ export function setFrameDuration(project: Project, id: string, duration: number 
       if (f.id !== id) return f;
       const { duration: _old, ...rest } = f;
       void _old;
-      const clip = f.layers[0]?.clip;
+      const ci = f.layers.findIndex((l) => l.clip);
+      const clip = f.layers[ci]?.clip;
       if (clip && duration !== undefined && project.defaults.clipFit !== 'trim') {
         // Режим Speed: кліп вміщується цілком, швидкість підлаштовується під нову тривалість
         const speed = Math.min(8, Math.max(0.1, (clip.end - clip.start) / duration));
-        return { ...rest, layers: f.layers.map((l, i) => (i === 0 ? { ...l, clip: { ...clip, speed } } : l)) };
+        return { ...rest, layers: f.layers.map((l, i) => (i === ci ? { ...l, clip: { ...clip, speed } } : l)) };
       }
       return duration === undefined ? rest : { ...rest, duration };
     }),
@@ -159,10 +161,11 @@ export function setFrameAscii(project: Project, id: string, patch: Partial<Ascii
 }
 
 /** Вибір Fit/Fill також скидає ручні розмір, зсув і поворот: інакше правки зверху ховають результат і здається, що кнопка не працює. undefined лише знімає перевизначення. */
-export function setFrameFit(project: Project, id: string, fit: 'fit' | 'fill' | undefined): Project {
+export function setFrameFit(project: Project, id: string, fit: 'fit' | 'fill' | undefined, li?: number): Project {
   return mapFrame(project, id, (f) => ({
     ...f,
-    layers: f.layers.map((l) => {
+    layers: f.layers.map((l, i) => {
+      if (li !== undefined && i !== Math.min(li, f.layers.length - 1)) return l; // лише вибраний шар
       const { fit: _old, scaleX: _a, scaleY: _b, dx: _c, dy: _d, rotation: _e, ...rest } = l;
       void _old; void _a; void _b; void _c; void _d; void _e;
       if (fit === undefined) return { ...rest, scaleX: l.scaleX, scaleY: l.scaleY, dx: l.dx, dy: l.dy, rotation: l.rotation };
@@ -195,11 +198,12 @@ export function scaleTotalDuration(project: Project, total: number): Project {
     ...project,
     defaults: { ...project.defaults, frameDuration: scale(project.defaults.frameDuration) },
     frames: project.frames.map((f) => {
-      const clip = f.layers[0]?.clip;
+      const ci = f.layers.findIndex((l) => l.clip);
+      const clip = f.layers[ci]?.clip;
       if (clip && f.duration === undefined) { // кліп без власної тривалості: Speed міняє швидкість, Trim фіксує нову тривалість
         if (project.defaults.clipFit === 'trim') return { ...f, duration: scale(clipLength(clip)) };
         const speed = Math.min(8, Math.max(0.1, clip.speed / k));
-        return { ...f, layers: f.layers.map((l, i) => (i === 0 ? { ...l, clip: { ...clip, speed } } : l)) };
+        return { ...f, layers: f.layers.map((l, i) => (i === ci ? { ...l, clip: { ...clip, speed } } : l)) };
       }
       return f.duration === undefined ? f : { ...f, duration: scale(f.duration) };
     }),
@@ -237,41 +241,62 @@ export function fitSlotToImage(project: Project, imgW: number, imgH: number): Pr
 // --- Перетворення виділених зображень ---
 type LayerPatch = Partial<Pick<Layer, 'scaleX' | 'scaleY' | 'dx' | 'dy' | 'rotation'>>;
 
-/** Застосовує fn до кожного шару кожного кадру з ids. */
-export function mapLayersOf(project: Project, ids: string[], fn: (layer: Layer, frame: Frame) => Layer): Project {
+/** Застосовує fn до шару li (за замовчуванням нижнього) кожного кадру з ids; якщо в кадрі менше шарів, до останнього. */
+export function mapLayersOf(project: Project, ids: string[], fn: (layer: Layer, frame: Frame) => Layer, li = 0): Project {
   const set = new Set(ids);
-  return { ...project, frames: project.frames.map((f) => (set.has(f.id) ? { ...f, layers: f.layers.map((l) => fn(l, f)) } : f)) };
+  return { ...project, frames: project.frames.map((f) => {
+    if (!set.has(f.id)) return f;
+    const at = Math.min(li, f.layers.length - 1);
+    return { ...f, layers: f.layers.map((l, i) => (i === at ? fn(l, f) : l)) };
+  }) };
 }
 
-export function patchLayers(project: Project, ids: string[], patch: LayerPatch): Project {
-  return mapLayersOf(project, ids, (l) => ({ ...l, ...patch }));
+/** Додає шар (картинку, GIF чи відео) поверх решти шарів кадру. */
+export function addLayer(project: Project, id: string, src: string, name?: string, clip?: ClipInfo): Project {
+  return mapFrame(project, id, (f) => {
+    const { duration: _d, ...rest } = f; void _d;
+    const layer = { ...imageLayer(src), name, ...(clip ? { clip } : {}) };
+    return { ...(clip ? rest : f), layers: [...f.layers, layer] }; // з кліпом кадр знову слідує за його довжиною
+  });
+}
+
+export function removeLayer(project: Project, id: string, index: number): Project {
+  return mapFrame(project, id, (f) => (f.layers.length <= 1 ? f : { ...f, layers: f.layers.filter((_, i) => i !== index) }));
+}
+
+export function patchLayers(project: Project, ids: string[], patch: LayerPatch, li = 0): Project {
+  return mapLayersOf(project, ids, (l) => ({ ...l, ...patch }), li);
 }
 
 /** Множник розміру від поточного (зберігає різницю між зображеннями). */
-export function scaleLayers(project: Project, ids: string[], factor: number): Project {
+export function scaleLayers(project: Project, ids: string[], factor: number, li = 0): Project {
   const clamp = (v: number) => Math.min(8, Math.max(0.05, v));
-  return mapLayersOf(project, ids, (l) => ({ ...l, scaleX: clamp((l.scaleX ?? 1) * factor), scaleY: clamp((l.scaleY ?? 1) * factor) }));
+  return mapLayersOf(project, ids, (l) => ({ ...l, scaleX: clamp((l.scaleX ?? 1) * factor), scaleY: clamp((l.scaleY ?? 1) * factor) }), li);
 }
 
 /** Ширина (або висота) задається числом; з увімкненим замком пропорцій друга сторона змінюється так само. */
-export function setLayerScale(project: Project, ids: string[], axis: 'x' | 'y', value: number, keepRatio: boolean): Project {
+export function setLayerScale(project: Project, ids: string[], axis: 'x' | 'y', value: number, keepRatio: boolean, li = 0): Project {
   const v = Math.min(8, Math.max(0.05, value));
   return mapLayersOf(project, ids, (l) => {
     const sx = l.scaleX ?? 1, sy = l.scaleY ?? 1;
     if (axis === 'x') return { ...l, scaleX: v, scaleY: keepRatio ? Math.min(8, Math.max(0.05, sy * (v / sx))) : sy };
     return { ...l, scaleY: v, scaleX: keepRatio ? Math.min(8, Math.max(0.05, sx * (v / sy))) : sx };
-  });
+  }, li);
 }
 
-export function resetLayerTransform(project: Project, ids: string[]): Project {
+export function resetLayerTransform(project: Project, ids: string[], li = 0): Project {
   return mapLayersOf(project, ids, (l) => {
     const { scaleX: _a, scaleY: _b, dx: _c, dy: _d, rotation: _e, ...rest } = l;
     void _a; void _b; void _c; void _d; void _e;
     return rest;
-  });
+  }, li);
 }
 
 /** Застосовує різні зміни до перших шарів різних кадрів (перетягування мишею). */
-export function applyLayerPatches(project: Project, patches: Record<string, LayerPatch>): Project {
-  return { ...project, frames: project.frames.map((f) => (patches[f.id] ? { ...f, layers: f.layers.map((l, i) => (i === 0 ? { ...l, ...patches[f.id] } : l)) } : f)) };
+export function applyLayerPatches(project: Project, patches: Record<string, LayerPatch>, li = 0): Project {
+  return { ...project, frames: project.frames.map((f) => {
+    if (!patches[f.id]) return f;
+    const at = Math.min(li, f.layers.length - 1);
+    return { ...f, layers: f.layers.map((l, i) => (i === at ? { ...l, ...patches[f.id] } : l)) };
+  }) };
 }

@@ -57,6 +57,8 @@ export interface ImageLayer {
   scaleX?: number; scaleY?: number;
   dx?: number; dy?: number;
   rotation?: number;
+  /** Назва для списку шарів кадру (ім'я файлу). */
+  name?: string;
   /** Є — шар відео/GIF (src тоді файл відео), нема — статична картинка. */
   clip?: ClipInfo;
 }

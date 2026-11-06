@@ -39,7 +39,7 @@ export function AnimatePanel({ project, selection, scope, duration, onChange }: 
           <>
             <SliderRow label="Frame duration, s" value={rf.duration} min={0.1} max={Math.max(10, rf.duration)} step={0.1} decimals={1}
               onChange={(v) => each((pr, id) => A.setFrameDuration(pr, id, v))} />
-            {frame.layers[0]?.clip && (
+            {frame.layers.some((l) => l.clip) && (
               <>
                 <Seg label="Duration changes the clip by" value={project.defaults.clipFit ?? 'speed'} onChange={(v) => onChange((pr) => A.setClipFit(pr, v))}
                   options={[{ id: 'speed', label: 'Speed', title: 'The whole clip fits the new duration: speed changes' }, { id: 'trim', label: 'Trim', title: 'The clip is cut at the new duration (or repeats if longer)' }]} />

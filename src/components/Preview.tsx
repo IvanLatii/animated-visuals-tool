@@ -12,6 +12,7 @@ interface Props {
   onSlot: (r: Rect) => void;
   selection: string[];
   keep: boolean;
+  activeLayer: number;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -32,7 +33,7 @@ const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 interface View { zoom: number; x: number; y: number } // zoom = множник відносно «вмістити», x/y — зсув у пікселях екрана
 
-export function Preview({ project, assets, t, editSlot, onSlot, selection, keep, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
+export function Preview({ project, assets, t, editSlot, onSlot, selection, keep, activeLayer, onPatches, canUndo, canRedo, onUndo, onRedo, playing, loop, duration, onTogglePlay, onToggleLoop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
@@ -173,7 +174,7 @@ export function Preview({ project, assets, t, editSlot, onSlot, selection, keep,
             </div>
           )}
           {imageEditing && (
-            <ImageEditor project={project} assets={assets} selection={selection} t={t} keep={keep} onPatches={onPatches}
+            <ImageEditor project={project} assets={assets} selection={selection} t={t} li={activeLayer} keep={keep} onPatches={onPatches}
               toCanvas={(e) => { const r = wrapRef.current!.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * w, y: ((e.clientY - r.top) / r.height) * h }; }} />
           )}
           {editSlot && (

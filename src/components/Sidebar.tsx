@@ -4,6 +4,7 @@ import type { Assets } from '../render/renderScene';
 import type { Project } from '../model/types';
 import { AsciiPanel } from './AsciiPanel';
 import { ClipPanel } from './ClipPanel';
+import { FrameLayers } from './FrameLayers';
 import { AnimatePanel } from './AnimatePanel';
 import { CanvasControls } from './CanvasControls';
 import { LayerDesign } from './LayerDesign';
@@ -30,6 +31,7 @@ interface Props {
   slot: Omit<React.ComponentProps<typeof StagePanel>, 'project' | 'onChange'>;
   keep: boolean;
   onKeep: (v: boolean) => void;
+  frameLayers: { li: number; onSelect: (i: number) => void; onAdd: (id: string, f: File) => void; onRemove: (id: string, i: number) => void };
   layer: Pick<React.ComponentProps<typeof LayerDesign>, 'onPickImage' | 'onClearImage'>;
 }
 
@@ -40,7 +42,7 @@ interface Props {
  *  фон або накладка → їхні властивості.
  * Новий тип шару — це новий рядок у Layers і новий розділ тут, без переносів.
  */
-export function Sidebar({ project, target, selection, assets, duration, exportSettings, onChange, onExportSettings, slot, keep, onKeep, layer }: Props) {
+export function Sidebar({ project, target, selection, assets, duration, exportSettings, onChange, onExportSettings, slot, keep, onKeep, layer, frameLayers }: Props) {
   const [tab, setTab] = useState<Tab>('design');
   const isLayer = target === 'background' || target === 'overlay';
   const active: Tab = isLayer ? 'design' : tab; // у шарів-картинок лише одна вкладка
@@ -52,8 +54,9 @@ export function Sidebar({ project, target, selection, assets, duration, exportSe
     <aside className="side">
       <Tabs label="Inspector" value={active} onChange={setTab} options={tabs} />
       <div className="side-scroll">
-        {active === 'design' && target === 'frames' && <SelectionPanel project={project} selection={selection} assets={assets} onChange={onChange} keep={keep} onKeep={onKeep} />}
-        {active === 'design' && target === 'frames' && <ClipPanel project={project} selection={selection} onChange={onChange} />}
+        {active === 'design' && target === 'frames' && <FrameLayers project={project} selection={selection} li={frameLayers.li} onSelect={frameLayers.onSelect} onAdd={frameLayers.onAdd} onRemove={frameLayers.onRemove} />}
+        {active === 'design' && target === 'frames' && <SelectionPanel project={project} selection={selection} assets={assets} onChange={onChange} keep={keep} onKeep={onKeep} li={frameLayers.li} />}
+        {active === 'design' && target === 'frames' && <ClipPanel project={project} selection={selection} onChange={onChange} li={frameLayers.li} />}
         {active === 'design' && target === 'frames' && <AsciiPanel project={project} selection={selection} onChange={onChange} />}
         {active === 'design' && isLayer && <LayerDesign project={project} kind={target} assets={assets} onChange={onChange} {...layer} />}
         {active === 'design' && target === 'project' && (

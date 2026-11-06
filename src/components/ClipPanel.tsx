@@ -7,16 +7,17 @@ interface Props {
   project: Project;
   selection: string[];
   onChange: (fn: (p: Project) => Project) => void;
+  li: number;
 }
 
 const SPEEDS = [0.5, 1, 2, 4];
 
 /** Відео або GIF у вибраному кадрі: обрізання, швидкість, повтор. Показується лише для кадрів із кліпом. */
-export function ClipPanel({ project, selection, onChange }: Props) {
+export function ClipPanel({ project, selection, onChange, li }: Props) {
   const frame = project.frames.find((f) => f.id === selection[selection.length - 1]);
-  const clip = frame?.layers[0]?.clip;
+  const clip = frame?.layers[Math.min(li, (frame?.layers.length ?? 1) - 1)]?.clip;
   if (!frame || !clip) return null;
-  const patch = (p: Parameters<typeof A.setClip>[2]) => onChange((pr) => A.setClip(pr, selection, p));
+  const patch = (p: Parameters<typeof A.setClip>[2]) => onChange((pr) => A.setClip(pr, selection, p, li));
 
   return (
     <Section id="clip" title={clip.kind === 'gif' ? 'GIF clip' : 'Video clip'}>

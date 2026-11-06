@@ -29,6 +29,7 @@ const notify = () => listeners.forEach((cb) => cb());
 const GRID = 60; // кадри кешуємо на сітці 60 за секунду: вистачає для експорту до 60 FPS
 const CACHE_FRAMES = 60;
 const MAX_QUEUE = 8;
+const GIF_MEMORY_BUDGET = 500e6; // байт на всі кадри одного GIF
 const DECODE_LONG_SIDE = 1600; // більше за це декодувати немає сенсу: полотно зазвичай ≤ 1920
 
 class VideoClip implements ClipAsset {
@@ -157,14 +158,18 @@ async function openGif(blob: Blob): Promise<OpenedClip | null> {
   const count = dec.tracks.selectedTrack?.frameCount ?? 1;
   if (count <= 1) { dec.close(); return null; }
   const frames: GifFrame[] = [];
-  let t = 0, width = 0, height = 0;
+  let t = 0, width = 0, height = 0, k = 1;
   for (let i = 0; i < count; i++) {
     const { image } = await dec.decode({ frameIndex: i });
     let d = (image.duration ?? 0) / 1e6;
     if (d < 0.02) d = 0.1; // так само роблять браузери для «нульових» затримок
-    width = image.displayWidth; height = image.displayHeight;
-    if (i === 0 && width * height * count * 4 > 800e6) { image.close(); dec.close(); throw new Error('This GIF is too large to open (too many frames at this size)'); }
-    frames.push({ bitmap: await createImageBitmap(image), start: t });
+    if (i === 0) {
+      // Усі кадри лежать у пам'яті. Дуже важкий GIF зменшуємо, щоб вкластись у бюджет, замість відмови.
+      k = Math.min(1, Math.sqrt(GIF_MEMORY_BUDGET / (image.displayWidth * image.displayHeight * count * 4)));
+      if (k < 0.2) { image.close(); dec.close(); throw new Error('This GIF is too large to open (too many frames at this size). Convert it to MP4 first'); }
+      width = Math.max(2, Math.round(image.displayWidth * k)); height = Math.max(2, Math.round(image.displayHeight * k));
+    }
+    frames.push({ bitmap: k < 1 ? await createImageBitmap(image, { resizeWidth: width, resizeHeight: height, resizeQuality: 'high' }) : await createImageBitmap(image), start: t });
     t += d;
     image.close();
   }

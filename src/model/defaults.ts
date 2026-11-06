@@ -100,9 +100,14 @@ export function clipSourceTime(c: ClipInfo, frameT: number): number {
   return c.start + within;
 }
 
+/** Перший шар кадру з відео/GIF (за ним рахується тривалість кадру). */
+export function clipLayerOf(frame: Frame): Layer | undefined {
+  return frame.layers.find((l) => l.clip);
+}
+
 /** Тривалість кадру: власна, інакше довжина кліпу, інакше за замовчуванням. */
 export function frameDuration(project: Project, frame: Frame): number {
-  const clip = frame.layers[0]?.clip;
+  const clip = clipLayerOf(frame)?.clip;
   return frame.duration ?? (clip ? clipLength(clip) : project.defaults.frameDuration);
 }
 

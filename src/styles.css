@@ -348,3 +348,14 @@ button.icon.danger:hover:not(:disabled) { border-color: var(--danger); color: va
 .snap-line { position: absolute; background: #ff2d8a; pointer-events: none; z-index: 5; }
 .snap-line.v { top: 0; bottom: 0; width: 1px; }
 .snap-line.h { left: 0; right: 0; height: 1px; }
+
+/* Шари всередині кадру */
+.layer-list { display: flex; flex-direction: column; gap: 4px; }
+.layer-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid var(--line); cursor: pointer; }
+.layer-row:hover { background: var(--bg); }
+.layer-row.on { border-color: var(--text); }
+.layer-row .thumb { width: 32px; height: 32px; flex: none; overflow: hidden; background: var(--bg); }
+.layer-row .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.layer-name { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-name small { color: var(--muted); font-size: 10px; }
+.layer-row .x { flex: none; }

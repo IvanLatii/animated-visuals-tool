@@ -19,7 +19,7 @@ import type { Project } from './model/types';
 import { parseProject, projectFileName, serializeProject } from './model/projectFile';
 import { canPick, downloadText, isAbort, pickOpenHandle, pickSaveHandle, writeHandle, type FileHandle } from './projectIO';
 import { buildTimeline, loadAssets, projectDuration, type Assets } from './render/renderScene';
-import { addFrames, applyLayerPatches, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
+import { addFrames, addLayer, applyLayerPatches, removeLayer, moveFrame, newFrame, removeFrame, replaceFrameImage, setCanvasSize, setFrameDuration, setProjectName, setSlot, setStageImage } from './state/projectActions';
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files');
 
@@ -56,11 +56,12 @@ export function App() {
   }, []);
   const { undo, redo, canUndo, canRedo } = useHistory(project, applyProject, 10);
   const [layerSel, setLayerSel] = useState<'background' | 'overlay' | null>(null); // вибраний шар-картинка в Layers (фон або накладка)
-  const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); setLayerSel(null); anchor.current = id; }, []);
+  const [activeLayer, setActiveLayer] = useState(0); // вибраний шар усередині кадру (0 — нижній); значення поза межами означає верхній
+  const selectOne = useCallback((id: string | null) => { setSelection(id ? [id] : []); setLayerSel(null); setActiveLayer(0); anchor.current = id; }, []);
   const selectLayer = useCallback((kind: 'background' | 'overlay') => { setSelection([]); setLayerSel(kind); anchor.current = null; }, []);
   const target: Target = selection.length > 0 ? 'frames' : layerSel ?? 'project'; // що показує Inspector
   const selectedFrame = project.frames.find((f) => f.id === selectedId);
-  const selImg = selectedFrame ? assets.get(selectedFrame.layers[0].src) : undefined;
+  const selImg = selectedFrame ? assets.get(selectedFrame.layers[Math.min(activeLayer, selectedFrame.layers.length - 1)].src) : undefined;
   const selectedImage = selImg ? { w: selImg.width, h: selImg.height } : null;
 
   const seek = useCallback((time: number) => { tRef.current = time; setT(time); }, []);
@@ -108,6 +109,20 @@ export function App() {
     setProject((p) => addFrames(p, loaded.map((l) => l.frame)));
     selectOne(loaded[loaded.length - 1].frame.id);
   }, [selectOne]);
+
+  /** Додає картинку, GIF чи відео шаром поверх вибраного кадру. */
+  const addLayerFile = useCallback(async (id: string, file: File) => {
+    if (!isMediaFile(file)) { setError('Unsupported file. Use PNG, JPG, WebP, GIF or a video (MP4, WebM).'); return; }
+    try {
+      const read = await readMedia(file);
+      setAssets((prev) => new Map(prev).set(read.src, read.asset));
+      setProject((p) => addLayer(p, id, read.src, file.name.replace(/\.[^.]+$/, ''), read.clip));
+      setActiveLayer(1e6); // новий шар лягає зверху й одразу вибраний (споживачі обмежують індекс останнім шаром)
+      setError(null);
+    } catch (e) {
+      setError(`Could not open "${file.name}": ${e instanceof Error ? e.message : 'unknown error'}`);
+    }
+  }, []);
 
   const replaceFile = useCallback(async (id: string, file: File) => {
     if (!isMediaFile(file)) { setError('Unsupported file. Use PNG, JPG, WebP, GIF or a video (MP4, WebM).'); return; }
@@ -302,7 +317,7 @@ export function App() {
         onChange={(left) => setLayout((l) => ({ ...l, left }))} onReset={() => setLayout((l) => ({ ...l, left: DEFAULT_LAYOUT.left }))} />
       <div className="center">
         <Preview project={project} assets={assets} t={t} editSlot={editSlot} onSlot={(r) => setProject((p) => setSlot(p, r))}
-          selection={selection} keep={keepProportions} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches))}
+          selection={selection} keep={keepProportions} activeLayer={activeLayer} onPatches={(patches) => setProject((p) => applyLayerPatches(p, patches, activeLayer))}
           canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} playing={playing} loop={loop} duration={duration}
           onTogglePlay={togglePlay} onToggleLoop={setLoop} />
         <Resizer axis="y" invert label="Timeline height" value={layout.timeline} min={LIMITS.timeline[0]} max={LIMITS.timeline[1]}
@@ -315,6 +330,7 @@ export function App() {
       <Sidebar project={project} target={target} selection={selection} assets={assets} duration={duration}
         exportSettings={exportSettings} onExportSettings={setExportSettings}
         keep={keepProportions} onKeep={setKeepProportions}
+        frameLayers={{ li: activeLayer, onSelect: setActiveLayer, onAdd: (id, f) => void addLayerFile(id, f), onRemove: (id, i) => { setProject((p) => removeLayer(p, id, i)); setActiveLayer(0); } }}
         slot={{ selectedImage, editSlot, onEditSlot: setEditSlot }}
         layer={{ onPickImage: (k, f) => void pickStageImage(k, f), onClearImage: (k) => { setProject((p) => setStageImage(p, k, undefined)); setLayerSel(null); } }}
         onChange={(fn: (p: Project) => Project) => setProject(fn)} />

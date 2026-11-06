@@ -11,6 +11,8 @@ interface Props {
   onChange: (fn: (p: Project) => Project) => void;
   keep: boolean;
   onKeep: (v: boolean) => void;
+  /** Який шар кадру редагується (0 — нижній). */
+  li: number;
 }
 
 const ALIGN: { how: AlignHow; label: string; path: string }[] = [
@@ -28,10 +30,10 @@ function common(values: number[]): { value: number; mixed: boolean } {
   return { value: first, mixed: values.some((v) => Math.abs(v - first) > 1e-6) };
 }
 
-export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep }: Props) {
+export function SelectionPanel({ project, selection, assets, onChange, keep, onKeep, li }: Props) {
   const frames = project.frames.filter((f) => selection.includes(f.id));
   if (frames.length === 0) return null;
-  const layers = frames.map((f) => f.layers[0]).filter(Boolean);
+  const layers = frames.map((f) => f.layers[Math.min(li, f.layers.length - 1)]).filter(Boolean);
   const ids = frames.map((f) => f.id);
   const fits = new Set(layers.map((l) => l.fit ?? project.defaults.layerFit));
   const fitValue = fits.size === 1 ? [...fits][0] : ''; // різні — жоден не підсвічено
@@ -47,22 +49,22 @@ export function SelectionPanel({ project, selection, assets, onChange, keep, onK
     const img = assets.get(l.src);
     if (!img) return l;
     return { ...l, ...alignedOffset(l, l.fit ?? p.defaults.layerFit, img, slotW, slotH, how) };
-  }));
+  }, li));
 
   return (
-    <Section id="selection" title={frames.length > 1 ? `Selected images (${frames.length})` : 'Selected image'}>
-      <Seg label="Fit mode" value={fitValue} onChange={(v) => onChange((p) => ids.reduce((acc, id) => A.setFrameFit(acc, id, v as 'fit' | 'fill'), p))}
+    <Section id="selection" title={frames.length > 1 ? `Selected images (${frames.length})` : li > 0 ? 'Selected layer' : 'Selected image'}>
+      <Seg label="Fit mode" value={fitValue} onChange={(v) => onChange((p) => ids.reduce((acc, id) => A.setFrameFit(acc, id, v as 'fit' | 'fill', li), p))}
         options={[{ id: 'fit', label: 'Fit' }, { id: 'fill', label: 'Fill' }]} />
-      <Row label="Width, %"><NumberField value={sx.value} mixed={sx.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'x', v / 100, keep))} /></Row>
-      <Row label="Height, %"><NumberField value={sy.value} mixed={sy.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'y', v / 100, keep))} /></Row>
+      <Row label="Width, %"><NumberField value={sx.value} mixed={sx.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'x', v / 100, keep, li))} /></Row>
+      <Row label="Height, %"><NumberField value={sy.value} mixed={sy.mixed} min={5} max={800} step={1} decimals={0} onChange={(v) => onChange((p) => A.setLayerScale(p, ids, 'y', v / 100, keep, li))} /></Row>
       <Row label="Keep proportions"><input type="checkbox" checked={keep} onChange={(e) => onKeep(e.target.checked)} /></Row>
       <div className="btn-row">
-        <button onClick={() => onChange((p) => A.scaleLayers(p, ids, 0.9))}>− 10%</button>
-        <button onClick={() => onChange((p) => A.scaleLayers(p, ids, 1.1))}>+ 10%</button>
+        <button onClick={() => onChange((p) => A.scaleLayers(p, ids, 0.9, li))}>− 10%</button>
+        <button onClick={() => onChange((p) => A.scaleLayers(p, ids, 1.1, li))}>+ 10%</button>
       </div>
-      <Row label="Offset X, %"><NumberField value={dx.value} mixed={dx.mixed} min={-100} max={100} step={1} decimals={1} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { dx: v / 100 }))} /></Row>
-      <Row label="Offset Y, %"><NumberField value={dy.value} mixed={dy.mixed} min={-100} max={100} step={1} decimals={1} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { dy: v / 100 }))} /></Row>
-      <Row label="Rotation, °"><NumberField value={rot.value} mixed={rot.mixed} min={-180} max={180} step={1} decimals={0} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { rotation: v }))} /></Row>
+      <Row label="Offset X, %"><NumberField value={dx.value} mixed={dx.mixed} min={-100} max={100} step={1} decimals={1} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { dx: v / 100 }, li))} /></Row>
+      <Row label="Offset Y, %"><NumberField value={dy.value} mixed={dy.mixed} min={-100} max={100} step={1} decimals={1} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { dy: v / 100 }, li))} /></Row>
+      <Row label="Rotation, °"><NumberField value={rot.value} mixed={rot.mixed} min={-180} max={180} step={1} decimals={0} onChange={(v) => onChange((p) => A.patchLayers(p, ids, { rotation: v }, li))} /></Row>
       <div className="align-row" role="group" aria-label="Align in content area">
         {ALIGN.map((a) => (
           <button key={a.how} className="icon" aria-label={a.label} data-tip={a.label} data-tip-pos="top" onClick={() => align(a.how)}>
@@ -70,7 +72,7 @@ export function SelectionPanel({ project, selection, assets, onChange, keep, onK
           </button>
         ))}
       </div>
-      <button className="link" onClick={() => onChange((p) => A.resetLayerTransform(p, ids))}>Reset size, position and rotation</button>
+      <button className="link" onClick={() => onChange((p) => A.resetLayerTransform(p, ids, li))}>Reset size, position and rotation</button>
     </Section>
   );
 }
