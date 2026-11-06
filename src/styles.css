@@ -153,6 +153,8 @@ progress::-webkit-progress-value { background: var(--accent); }
 .side-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .sec { border-bottom: 1px solid var(--line); }
 .sec-toggle { width: 100%; height: auto; padding: 14px 16px; justify-content: space-between; border: none; background: none; font-weight: 600; }
+.sec > header { position: relative; }
+.sec-check { position: absolute; right: 44px; top: 50%; transform: translateY(-50%); margin: 0; }
 .sec-toggle i { font-style: normal; color: var(--muted); }
 .sec-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .28s var(--ease-out); }
 .sec.open .sec-collapse { grid-template-rows: 1fr; }

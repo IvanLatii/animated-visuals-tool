@@ -3,6 +3,7 @@ import { baseBox } from './layerGeometry';
 import { resolveFrame, type ResolvedFrame } from '../model/defaults';
 import type { Layer, Project } from '../model/types';
 import { applyEasing } from './easing';
+import { renderAscii, resolveAscii } from './ascii';
 import { motions } from './effects';
 import { transitions, type Size } from './transitions';
 
@@ -62,7 +63,22 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fi
   ctx.restore();
 }
 
+const scratch = { src: null as HTMLCanvasElement | null, out: null as HTMLCanvasElement | null };
+
+/** Кадр з увімкненим ASCII: малюємо звичайно в тимчасове полотно, потім замінюємо символами. ctx лишається з поточним станом (перехід міг його змінити). */
 function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size, noMotion = false) {
+  const ascii = rf.frame.ascii?.enabled ? resolveAscii(rf.frame.ascii) : null;
+  if (!ascii) return drawFrameImage(ctx, rf, fitDefault, progress, assets, size, noMotion);
+  const w = Math.max(1, Math.round(size.w)), h = Math.max(1, Math.round(size.h));
+  const src = (scratch.src ??= document.createElement('canvas'));
+  const out = (scratch.out ??= document.createElement('canvas'));
+  src.width = w; src.height = h; out.width = w; out.height = h; // зміна розміру ще й очищає
+  drawFrameImage(src.getContext('2d')!, rf, fitDefault, progress, assets, size, noMotion);
+  renderAscii(src, out, ascii);
+  ctx.drawImage(out, 0, 0, size.w, size.h);
+}
+
+function drawFrameImage(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size, noMotion = false) {
   const { w: W, h: H } = size;
   const tr = noMotion ? { scale: 1, dx: 0, dy: 0, rotate: 0 } : motions[rf.motion.type](rf.motion, progress, { w: W, h: H });
   ctx.save();

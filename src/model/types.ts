@@ -44,6 +44,27 @@ export interface ImageLayer {
 }
 export type Layer = ImageLayer; // 'text' | '3d' — пізніше
 
+/** ASCII-вигляд кадру: зображення перетворюється на символи за яскравістю (або прозорістю). */
+export interface AsciiSettings {
+  enabled: boolean;
+  /** Ширина клітинки, частка ширини вікна (0.01 = 100 колонок). */
+  cell: number;
+  /** Символи від щільного до легкого. */
+  chars: string;
+  /** Що задає форму: яскравість зображення чи його прозорість (логотипи). */
+  source: 'brightness' | 'alpha';
+  /** За замовчуванням темне = щільний символ (як друк на світлому); інверсія — світле = щільний. */
+  invert: boolean;
+  /** 0–2, 1 = без змін. */
+  contrast: number;
+  /** 0–1: посилення контурів. */
+  edges: number;
+  colorMode: 'single' | 'image';
+  color: string;
+  /** null — прозоре тло (видно те, що під вікном). */
+  background: string | null;
+}
+
 export interface Frame {
   id: string;
   /** Назва зображення (ім'я файлу без розширення) для списку кадрів. */
@@ -53,6 +74,7 @@ export interface Frame {
   duration?: number;
   motion?: Partial<Motion>;
   transitionOut?: Partial<Transition>;
+  ascii?: Partial<AsciiSettings>;
 }
 
 export interface Defaults {

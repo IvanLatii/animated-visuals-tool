@@ -1,6 +1,6 @@
 import { CANVAS_PRESETS, imageLayer } from '../model/defaults';
 import type { MotionProfile } from '../model/profiles';
-import type { Frame, Layer, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
+import type { AsciiSettings, Frame, Layer, Motion, Project, Rect, SafeZone, Stage, Transition } from '../model/types';
 
 // Чисті функції: беруть проєкт, повертають новий. Нічого не змінюють на місці.
 
@@ -108,6 +108,14 @@ export function setFrameTransition(project: Project, id: string, patch: Partial<
   return mapFrame(project, id, (f) => {
     const { transitionOut: _old, ...rest } = f; void _old;
     return patch === undefined ? rest : { ...rest, transitionOut: { ...f.transitionOut, ...patch } };
+  });
+}
+
+/** patch мерджиться в наявні налаштування; undefined прибирає ASCII з кадру. */
+export function setFrameAscii(project: Project, id: string, patch: Partial<AsciiSettings> | undefined): Project {
+  return mapFrame(project, id, (f) => {
+    const { ascii: _old, ...rest } = f; void _old;
+    return patch === undefined ? rest : { ...rest, ascii: { ...f.ascii, ...patch } };
   });
 }
 
