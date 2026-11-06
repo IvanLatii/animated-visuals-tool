@@ -22,16 +22,21 @@ const ICONS: Record<MotionType, string> = {
   pop: 'M6.5 10a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2',
   focus: 'M10 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8M10 2v3M10 15v3M2 10h3M15 10h3',
   handheld: 'M2.5 10l2-3 2 5 2-6 2 7 2-5 2 4 2-2',
+  'spin-y': 'M10 3v14M6 5c-2 1.2-2 8.8 0 10M14 5c2 1.2 2 8.8 0 10M10 3.5c-3 0-5 3-5 6.5s2 6.5 5 6.5',
+  'spin-x': 'M3 10h14M5 6c1.2-2 8.8-2 10 0M5 14c1.2 2 8.8 2 10 0',
+  'swing-y': 'M10 3v14M5 6l3 1.5v5L5 14zM15 6l-3 1.5v5l3 1.5',
+  'swing-x': 'M3 10h14M6 5l1.5 3h5L14 5zM6 15l1.5-3h5l1.5 3',
 };
 const LABELS: Record<MotionType, string> = {
   none: 'None', breathe: 'Breathe', 'zoom-in': 'Zoom in', 'zoom-out': 'Zoom out', 'pan-left': 'Pan left', 'pan-right': 'Pan right',
   'pan-up': 'Pan up', 'pan-down': 'Pan down', 'tilt-cw': 'Tilt cw', 'tilt-ccw': 'Tilt ccw',
   'drift-ul': 'Drift ↖', 'drift-ur': 'Drift ↗', 'drift-dl': 'Drift ↙', 'drift-dr': 'Drift ↘',
   float: 'Float', pop: 'Pop in', focus: 'Focus in', handheld: 'Handheld', appear: 'Appear', rise: 'Rise',
+  'spin-y': 'Spin Y', 'spin-x': 'Spin X', 'swing-y': 'Swing Y', 'swing-x': 'Swing X',
 };
 // Основні — ті, що найкраще виглядають; решта під «More motions».
-const PRIMARY: MotionType[] = ['none', 'zoom-in', 'zoom-out', 'focus', 'appear', 'rise'];
-const MORE: MotionType[] = ['pop', 'breathe', 'pan-left', 'pan-right', 'pan-up', 'pan-down', 'tilt-cw', 'tilt-ccw',
+const PRIMARY: MotionType[] = ['none', 'zoom-in', 'zoom-out', 'focus', 'appear', 'rise', 'spin-y', 'spin-x'];
+const MORE: MotionType[] = ['swing-y', 'swing-x', 'pop', 'breathe', 'pan-left', 'pan-right', 'pan-up', 'pan-down', 'tilt-cw', 'tilt-ccw',
   'drift-ul', 'drift-ur', 'drift-dl', 'drift-dr', 'float', 'handheld'];
 
 /** Вибір руху плитками: видно, що саме робитиме кожен тип. */

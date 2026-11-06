@@ -2,7 +2,7 @@ import type { Motion, MotionType } from '../model/types';
 import { applyEasing } from './easing';
 
 /** Єдиний інтерфейс руху: прогрес кадру 0–1 → масштаб, зсув (у частках полотна) і поворот (радіани). */
-export interface MotionTransform { scale: number; dx: number; dy: number; rotate: number; blur?: number; alpha?: number } // blur — частка ширини, alpha — прозорість кадру
+export interface MotionTransform { scale: number; dx: number; dy: number; rotate: number; blur?: number; alpha?: number; rotY?: number; rotX?: number; persp?: number } // blur — частка ширини, alpha — прозорість кадру
 export type MotionFn = (motion: Motion, progress: number, size: { w: number; h: number }) => MotionTransform;
 
 const IDENTITY: MotionTransform = { scale: 1, dx: 0, dy: 0, rotate: 0, blur: 0, alpha: 1 };
@@ -31,8 +31,16 @@ const drift = (sx: 1 | -1, sy: 1 | -1): MotionFn => (m, p) => {
   return { ...IDENTITY, scale: 1 + m.intensity * (0.5 + 0.5 * e), dx: sx * shift, dy: sy * shift };
 };
 
+/** Псевдо-3D: повертає кадр навколо осі (радіани) з перспективою. persp — сила перспективи 0–0.6 (з Strength). */
+const spin = (axis: 'y' | 'x', swing: boolean): MotionFn => (m, p) => {
+  const e = applyEasing(m.easing, p);
+  const angle = swing ? (40 * Math.PI / 180) * Math.sin(2 * Math.PI * e) : 2 * Math.PI * e;
+  return { ...IDENTITY, rotY: axis === 'y' ? angle : 0, rotX: axis === 'x' ? angle : 0, persp: m.intensity };
+};
+
 export const motions: Record<MotionType, MotionFn> = {
   none: () => IDENTITY,
+  'spin-y': spin('y', false), 'spin-x': spin('x', false), 'swing-y': spin('y', true), 'swing-x': spin('x', true),
   'zoom-in': (m, p) => ({ ...IDENTITY, scale: 1 + m.intensity * applyEasing(m.easing, p) }),
   breathe: (m, p) => ({ ...IDENTITY, scale: 1 + m.intensity * Math.sin(Math.PI * applyEasing(m.easing, p)) }),
   'zoom-out': (m, p) => ({ ...IDENTITY, scale: 1 + m.intensity * (1 - applyEasing(m.easing, p)) }),

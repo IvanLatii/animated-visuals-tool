@@ -29,7 +29,7 @@ export function MotionControls({ value, onChange, overridden, onReset }: { value
       <MotionPicker value={value.type} onChange={(type) => onChange({ type, ...MOTION_DEFAULTS[type] })} />
       {value.type !== 'none' && (
         <>
-          <SliderRow label="Strength" value={value.intensity} min={0} max={0.6} step={0.01} scale={100} onChange={(intensity) => onChange({ intensity })} />
+          <SliderRow label={/^(spin|swing)/.test(value.type) ? "Perspective" : "Strength"} value={value.intensity} min={0} max={0.6} step={0.01} scale={100} onChange={(intensity) => onChange({ intensity })} />
           <EasingControls value={value.easing} onChange={(easing) => onChange({ easing })} />
         </>
       )}

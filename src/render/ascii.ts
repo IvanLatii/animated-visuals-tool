@@ -11,6 +11,8 @@ export const ASCII_DEFAULT: AsciiSettings = {
   colorMode: 'single',
   color: '#5a4fe0',
   background: '#ffffff',
+  anim: 'none',
+  animAmount: 0.5,
 };
 
 export const ASCII_PRESETS: { id: string; label: string; settings: Partial<AsciiSettings> }[] = [
@@ -18,6 +20,8 @@ export const ASCII_PRESETS: { id: string; label: string; settings: Partial<Ascii
   { id: 'mono-black', label: 'Mono black', settings: { chars: '@#*+-. ', color: '#111111', background: '#ffffff', invert: false, colorMode: 'single', source: 'brightness' } },
   { id: 'mono-white', label: 'Mono white', settings: { chars: '@#*+-. ', color: '#ffffff', background: '#000000', invert: true, colorMode: 'single', source: 'brightness' } },
   { id: 'color-mosaic', label: 'Color mosaic', settings: { chars: '@#*+-. ', color: '#ffffff', background: '#000000', invert: true, colorMode: 'image', source: 'brightness' } },
+  { id: 'logo-assemble', label: 'Logo assembles from noise', settings: { chars: '@#*+-. ', color: '#5a4fe0', background: '#ffffff', invert: false, colorMode: 'single', source: 'alpha', edges: 0.5, anim: 'assemble' } },
+  { id: 'logo-alive', label: 'Logo, living symbols', settings: { chars: '@#*+-. ', color: '#5a4fe0', background: '#ffffff', invert: false, colorMode: 'single', source: 'alpha', edges: 0.5, anim: 'flicker', animAmount: 0.4 } },
   { id: 'logo', label: 'Logo silhouette (alpha)', settings: { chars: '@#*+-. ', color: '#5a4fe0', background: '#ffffff', invert: false, colorMode: 'single', source: 'alpha', edges: 0.5 } },
 ];
 
@@ -36,7 +40,15 @@ const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
  * Перетворює зображення src на символи й малює їх у out (тієї ж розмірності).
  * Чиста щодо проєкту: бере лише налаштування. Малює в out з нуля.
  */
-export function renderAscii(src: HTMLCanvasElement, out: HTMLCanvasElement, settings: AsciiSettings): void {
+/** Дешевий детермінований «шум» 0–1 для клітинки (x, y) і числа k: без Math.random, щоб кадр завжди малювався однаково. */
+function hash(x: number, y: number, k = 0): number {
+  let h = (x * 374761393 + y * 668265263 + k * 1274126177) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (((h ^ (h >>> 16)) >>> 0) % 10007) / 10007;
+}
+const ANIM_FPS = 14; // як часто міняються випадкові символи
+
+export function renderAscii(src: HTMLCanvasElement, out: HTMLCanvasElement, settings: AsciiSettings, time = 0, progress = 0): void {
   const W = out.width, H = out.height;
   const ctx = out.getContext('2d')!;
   ctx.clearRect(0, 0, W, H);
@@ -92,9 +104,21 @@ export function renderAscii(src: HTMLCanvasElement, out: HTMLCanvasElement, sett
   if (settings.colorMode === 'single') ctx.fillStyle = settings.color;
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
     const i = y * cols + x;
-    const v = ink[i];
+    let v = ink[i];
+    const mode = settings.anim ?? 'none';
+    if (mode === 'wave') v = clamp01(v + settings.animAmount * 0.6 * Math.sin(x * 0.3 + y * 0.12 - time * 4) * (v > 0.04 ? 1 : 0)); // хвиля щільності біжить по формі
     if (v < 0.04) continue;
-    const c = chars[Math.min(n - 1, Math.round((1 - v) * (n - 1)))];
+    let c = chars[Math.min(n - 1, Math.round((1 - v) * (n - 1)))];
+    if (mode !== 'none' && mode !== 'wave') {
+      const h = hash(x, y), tick = Math.floor(time * ANIM_FPS);
+      const rnd = () => chars[Math.floor(hash(x, y, tick + 1) * n)];
+      if (mode === 'assemble') { if (h >= Math.min(1, progress / 0.6)) c = rnd(); } // клітинка «встає на місце», коли її черга настала
+      else if (mode === 'dissolve') {
+        const k = Math.max(0, Math.min(1, (progress - 0.4) / 0.6));
+        if (h < k - 0.25) continue; // зникла
+        if (h < k) c = rnd();
+      } else if (hash(x, y, tick + 7) < settings.animAmount * 0.5) c = rnd(); // flicker
+    }
     if (c === ' ') continue;
     if (settings.colorMode === 'image') ctx.fillStyle = `rgb(${px[i * 4]},${px[i * 4 + 1]},${px[i * 4 + 2]})`;
     ctx.fillText(c, (x + 0.5) * cw, (y + 0.5) * ch);

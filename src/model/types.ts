@@ -14,7 +14,8 @@ export type MotionType =
   | 'float' | 'pop' | 'focus' | 'handheld'
   | 'appear' | 'rise' // м'яке з'явлення: з прозорості й легкого масштабу / знизу вгору
   | 'pan-left' | 'pan-right' | 'pan-up' | 'pan-down' // картинка їде в названий бік
-  | 'tilt-cw' | 'tilt-ccw'; // легкий нахил за / проти годинникової стрілки
+  | 'tilt-cw' | 'tilt-ccw' // легкий нахил за / проти годинникової стрілки
+  | 'spin-y' | 'spin-x' | 'swing-y' | 'swing-x'; // псевдо-3D: повний оберт навколо вертикальної / горизонтальної осі, або хитання ±40°
 export interface Motion {
   type: MotionType;
   /** На скільки змінюється масштаб: 0.2 = на 20%. */
@@ -110,6 +111,10 @@ export interface AsciiSettings {
   color: string;
   /** null — прозоре тло (видно те, що під вікном). */
   background: string | null;
+  /** Анімація символів: assemble — з шуму збирається форма, dissolve — форма розсипається, flicker — символи мерехтять, wave — хвиля щільності. */
+  anim: 'none' | 'assemble' | 'dissolve' | 'flicker' | 'wave';
+  /** 0–1: сила мерехтіння / хвилі. */
+  animAmount: number;
 }
 
 export interface Frame {

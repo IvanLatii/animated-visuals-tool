@@ -141,7 +141,34 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: Layer, fit: 'fit' | 'fi
   ctx.restore();
 }
 
-const scratch = { src: null as HTMLCanvasElement | null, out: null as HTMLCanvasElement | null };
+const scratch = { src: null as HTMLCanvasElement | null, out: null as HTMLCanvasElement | null, flat: null as HTMLCanvasElement | null, flat2: null as HTMLCanvasElement | null };
+
+function scratchCanvas(key: 'flat' | 'flat2', w: number, h: number): HTMLCanvasElement {
+  const c = (scratch[key] ??= document.createElement('canvas'));
+  c.width = w; c.height = h; // зміна розміру ще й очищає
+  return c;
+}
+
+/**
+ * Псевдо-3D: повертає плоский кадр навколо осі смужками з перспективою (кожна смужка свого масштабу). persp 0–0.6 — сила перспективи.
+ * Зворотний бік (кут > 90°) виходить дзеркальним, як у картки. Малює в ctx у координатах кадру 0..W × 0..H.
+ */
+function projectAxis(ctx: CanvasRenderingContext2D, src: HTMLCanvasElement, W: number, H: number, angle: number, persp: number, axis: 'y' | 'x') {
+  const len = axis === 'y' ? W : H, cross = axis === 'y' ? H : W;
+  const d = len / (persp * 1.5 + 0.15); // відстань до «камери»
+  const step = Math.max(1, Math.round(len / 600));
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const proj = (u: number) => { const s = d / Math.max(0.05 * d, d - u * sin); return { pos: u * cos * s, s }; };
+  for (let a = 0; a < len; a += step) {
+    const u0 = a - len / 2, u1 = Math.min(len, a + step) - len / 2;
+    const p0 = proj(u0), p1 = proj(u1);
+    const s = (p0.s + p1.s) / 2, size = cross * s;
+    const x0 = len / 2 + Math.min(p0.pos, p1.pos), w = Math.abs(p1.pos - p0.pos) + 0.75;
+    const y0 = cross / 2 - size / 2;
+    if (axis === 'y') ctx.drawImage(src, a, 0, Math.min(step, len - a), cross, x0, y0, w, size);
+    else ctx.drawImage(src, 0, a, cross, Math.min(step, len - a), y0, x0, size, w);
+  }
+}
 
 /** Кадр з увімкненим ASCII: малюємо звичайно в тимчасове полотно, потім замінюємо символами. ctx лишається з поточним станом (перехід міг його змінити). */
 function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault: 'fit' | 'fill', progress: number, assets: Assets, size: Size, frameT: number, noMotion = false) {
@@ -152,7 +179,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDefault:
   const out = (scratch.out ??= document.createElement('canvas'));
   src.width = w; src.height = h; out.width = w; out.height = h; // зміна розміру ще й очищає
   drawFrameImage(src.getContext('2d')!, rf, fitDefault, progress, assets, size, frameT, noMotion);
-  renderAscii(src, out, ascii);
+  renderAscii(src, out, ascii, frameT, progress);
   ctx.drawImage(out, 0, 0, size.w, size.h);
 }
 
@@ -166,7 +193,21 @@ function drawFrameImage(ctx: CanvasRenderingContext2D, rf: ResolvedFrame, fitDef
   ctx.translate(-W / 2, -H / 2);
   if (tr.blur) ctx.filter = `blur(${(tr.blur * W).toFixed(2)}px)`;
   if (tr.alpha !== undefined && tr.alpha < 1) ctx.globalAlpha *= Math.max(0, tr.alpha);
-  for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets, size, frameT);
+  if (tr.rotY || tr.rotX) {
+    // Псевдо-3D: малюємо плоский кадр окремо й проєктуємо його смужками (спершу вісь Y, потім X)
+    const w = Math.max(1, Math.round(W)), h = Math.max(1, Math.round(H));
+    const flat = scratchCanvas('flat', w, h);
+    const fctx = flat.getContext('2d')!;
+    for (const layer of rf.frame.layers) drawLayer(fctx, layer, layer.fit ?? fitDefault, assets, size, frameT);
+    const persp = tr.persp ?? 0.3;
+    if (tr.rotY && tr.rotX) {
+      const mid = scratchCanvas('flat2', w, h);
+      projectAxis(mid.getContext('2d')!, flat, w, h, tr.rotY, persp, 'y');
+      projectAxis(ctx, mid, w, h, tr.rotX, persp, 'x');
+    } else projectAxis(ctx, flat, w, h, tr.rotY || tr.rotX || 0, persp, tr.rotY ? 'y' : 'x');
+  } else {
+    for (const layer of rf.frame.layers) drawLayer(ctx, layer, layer.fit ?? fitDefault, assets, size, frameT);
+  }
   ctx.restore();
 }
 

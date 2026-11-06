@@ -17,6 +17,11 @@ export const MOTION_DEFAULTS: Partial<Record<MotionType, Partial<Motion>>> = {
   appear: { intensity: 0.12, easing: { type: 'ease-out', strength: 3 } },
   rise: { intensity: 0.12, easing: { type: 'ease-out', strength: 4 } },
   pop: { intensity: 0.12, easing: { type: 'ease-out', strength: 4 } },
+  // Для обертань Strength = сила перспективи
+  'spin-y': { intensity: 0.3, easing: { type: 'ease-in-out', strength: 2 } },
+  'spin-x': { intensity: 0.3, easing: { type: 'ease-in-out', strength: 2 } },
+  'swing-y': { intensity: 0.3, easing: { type: 'ease-in-out', strength: 2 } },
+  'swing-x': { intensity: 0.3, easing: { type: 'ease-in-out', strength: 2 } },
 };
 
 /** Рекомендована тривалість і крива при виборі переходу: швидкі, але не різкі. */

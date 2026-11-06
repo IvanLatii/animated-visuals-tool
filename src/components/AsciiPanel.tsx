@@ -29,6 +29,11 @@ export function AsciiPanel({ project, selection, onChange }: Props) {
       <SliderRow label="Cell size, %" value={s.cell} min={0.005} max={0.04} step={0.0005} scale={100} decimals={1} onChange={(v) => patch({ cell: v })} />
       <SliderRow label="Contrast" value={s.contrast} min={0.3} max={2} step={0.05} decimals={2} onChange={(v) => patch({ contrast: v })} />
       <SliderRow label="Edges" value={s.edges} min={0} max={1} step={0.05} decimals={2} onChange={(v) => patch({ edges: v })} />
+      <Row label="Animation" stack>
+        <Seg label="Symbol animation" value={s.anim} onChange={(v) => patch({ anim: v })}
+          options={[{ id: 'none', label: 'None' }, { id: 'assemble', label: 'Assemble' }, { id: 'dissolve', label: 'Dissolve' }, { id: 'flicker', label: 'Flicker' }, { id: 'wave', label: 'Wave' }]} />
+      </Row>
+      {(s.anim === 'flicker' || s.anim === 'wave') && <SliderRow label="Amount" value={s.animAmount} min={0} max={1} step={0.05} decimals={2} onChange={(v) => patch({ animAmount: v })} />}
       <Row label="Invert"><input type="checkbox" checked={s.invert} onChange={(e) => patch({ invert: e.target.checked })} /></Row>
       <Row label="Characters" stack>
         <input className="hex" style={{ width: '100%' }} value={s.chars} aria-label="Characters, dense to light" spellCheck={false}
